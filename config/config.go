@@ -1,9 +1,12 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -51,13 +54,41 @@ func LoadConfig() *Config {
 		DBPassword:    getEnv("DB_PASSWORD", "postgres"),
 		DBName:        getEnv("DB_NAME", "dormitory_db"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		SessionSecret: getEnv("SESSION_SECRET", "dormitory-super-secure-secret-key-2026-min-32-chars!"),
+		SessionSecret: getOrGenerateSessionSecret(),
 		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@dormitory.com"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123456"),
 		AdminName:     getEnv("ADMIN_NAME", "Dormitory Administrator"),
 		UploadDir:     getEnv("UPLOAD_DIR", "./uploads"),
 		Environment:   getEnv("ENV", "development"),
 	}
+}
+
+func getOrGenerateSessionSecret() string {
+	secret := os.Getenv("SESSION_SECRET")
+	// If a custom non-default secret is provided via environment, use it
+	if secret != "" && secret != "dormitory-super-secure-secret-key-2026-min-32-chars!" {
+		return secret
+	}
+
+	// Try reading from persistent local key file
+	keyFile := ".session_key"
+	if data, err := os.ReadFile(keyFile); err == nil {
+		trimmed := strings.TrimSpace(string(data))
+		if len(trimmed) >= 32 {
+			return trimmed
+		}
+	}
+
+	// Generate 32 bytes (64 hex characters) of cryptographic random bytes
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err == nil {
+		generated := hex.EncodeToString(b)
+		_ = os.WriteFile(keyFile, []byte(generated), 0600)
+		log.Println("[SECURITY] Generated persistent dynamic SESSION_SECRET in .session_key")
+		return generated
+	}
+
+	return "dormitory-super-secure-secret-key-2026-min-32-chars!"
 }
 
 func getEnv(key, defaultVal string) string {

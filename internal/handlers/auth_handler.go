@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+	"time"
 
 	"dormitory-management-system/config"
 	"dormitory-management-system/internal/database"
@@ -77,7 +78,13 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		&user.ID, &user.Name, &user.Email, &user.Password, &user.Role, &user.Phone, &roomID,
 	)
 
+	// Anti brute-force timing mitigation
+	failLogin := func() {
+		time.Sleep(300 * time.Millisecond)
+	}
+
 	if err != nil {
+		failLogin()
 		// Generic invalid credentials message to prevent user enumeration
 		if isAPI {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
@@ -95,6 +102,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 
 	// Verify bcrypt hash
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		failLogin()
 		if isAPI {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return

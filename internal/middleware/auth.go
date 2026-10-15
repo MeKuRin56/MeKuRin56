@@ -142,7 +142,7 @@ func GetCurrentUser(c *gin.Context) *models.User {
 	var roomNo sqlNullString
 
 	query := db.Rebind(`
-		SELECT u.id, u.name, u.email, u.role, u.phone, u.room_id, r.room_number, u.created_at, u.updated_at
+		SELECT u.id, u.name, u.email, u.role, COALESCE(u.phone, ''), u.room_id, r.room_number, u.created_at, u.updated_at
 		FROM users u
 		LEFT JOIN rooms r ON u.room_id = r.id
 		WHERE u.id = ?

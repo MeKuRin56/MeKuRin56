@@ -16,6 +16,7 @@ dormitory.db*
 # Environment secrets
 .env
 !.env.example
+.session_key
 
 # User uploads (keep directory structure)
 uploads/*

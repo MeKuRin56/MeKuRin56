@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"dormitory-management-system/config"
@@ -46,11 +48,41 @@ func main() {
 	r.Static("/static", "./static")
 	r.Static("/locales", "./locales")
 
-	// Ensure upload directory exists and serve uploaded slips safely
-	if err := os.MkdirAll(cfg.UploadDir, 0755); err != nil {
-		log.Printf("[WARNING] Could not create upload directory: %v", err)
-	}
-	r.Static("/uploads", cfg.UploadDir)
+	// Secure uploaded slips serving: Authenticated & Authorized (Admin or Slip Owner)
+	r.GET("/uploads/:filename", middleware.AuthRequired(), func(c *gin.Context) {
+		filename := c.Param("filename")
+		cleanFilename := filepath.Base(filename)
+		if cleanFilename != filename || strings.Contains(filename, "..") || cleanFilename == "." {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		user := middleware.GetCurrentUser(c)
+		if user == nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		// Authorization check: tenants can only access slips belonging to their own payments
+		if user.Role != models.RoleAdmin {
+			slipURL := "/uploads/" + cleanFilename
+			var ownerID int64
+			err := db.QueryRow(db.Rebind("SELECT tenant_id FROM payments WHERE slip_url = ?"), slipURL).Scan(&ownerID)
+			if err != nil || ownerID != user.ID {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+		}
+
+		filePath := filepath.Join(cfg.UploadDir, cleanFilename)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.File(filePath)
+	})
 
 	// CSRF Protection Middleware
 	r.Use(middleware.CSRFMiddleware(cfg.IsProduction()))

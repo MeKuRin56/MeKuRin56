@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -108,6 +109,40 @@ func setupTestApp(t *testing.T) (*gin.Engine, *database.DB, *config.Config) {
 		adminGroup.POST("/assign-room", adminHandler.AssignTenantRoom)
 		adminGroup.POST("/unassign-room", adminHandler.UnassignTenantRoom)
 	}
+
+	r.GET("/uploads/:filename", middleware.AuthRequired(), func(c *gin.Context) {
+		filename := c.Param("filename")
+		cleanFilename := filepath.Base(filename)
+		if cleanFilename != filename || strings.Contains(filename, "..") || cleanFilename == "." {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		user := middleware.GetCurrentUser(c)
+		if user == nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		if user.Role != models.RoleAdmin {
+			slipURL := "/uploads/" + cleanFilename
+			var ownerID int64
+			err := db.QueryRow(db.Rebind("SELECT tenant_id FROM payments WHERE slip_url = ?"), slipURL).Scan(&ownerID)
+			if err != nil || ownerID != user.ID {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+		}
+
+		filePath := filepath.Join(cfg.UploadDir, cleanFilename)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.File(filePath)
+	})
 
 	return r, db, cfg
 }
@@ -514,6 +549,98 @@ func TestProfilePasswordValidation(t *testing.T) {
 	// Verify wrong password rejected
 	if err := bcrypt.CompareHashAndPassword(hash, []byte("wrongPassword")); err == nil {
 		t.Errorf("Wrong password was erroneously accepted!")
+	}
+}
+
+// 14: Test Dynamic Cryptographic Session Secret Generation
+func TestDynamicSessionSecret(t *testing.T) {
+	cfg := config.LoadConfig()
+	if len(cfg.SessionSecret) < 32 {
+		t.Errorf("Expected SessionSecret to be at least 32 characters, got %d", len(cfg.SessionSecret))
+	}
+}
+
+// 15: Test Uploads Security, Path Traversal, and IDOR Protection
+func TestUploadsSecurityAndIDOR(t *testing.T) {
+	r, db, cfg := setupTestApp(t)
+
+	// Ensure test uploads directory exists
+	_ = os.MkdirAll(cfg.UploadDir, 0755)
+	testFile := filepath.Join(cfg.UploadDir, "tenant1_slip.png")
+	_ = os.WriteFile(testFile, []byte("fake image content"), 0644)
+	defer os.Remove(testFile)
+
+	// Register payment slip for tenant 1
+	_, err := db.Exec(db.Rebind(`
+		INSERT INTO payments (tenant_id, billing_month, amount, payment_date, slip_url, status)
+		VALUES (1, '2026-10', 4500.0, '2026-10-15', '/uploads/tenant1_slip.png', 'pending')
+	`))
+	if err != nil {
+		t.Fatalf("Failed to seed payment record: %v", err)
+	}
+
+	// 1. Unauthenticated request to /uploads/tenant1_slip.png must be rejected (401 or redirect)
+	reqUnauth, _ := http.NewRequest("GET", "/uploads/tenant1_slip.png", nil)
+	wUnauth := httptest.NewRecorder()
+	r.ServeHTTP(wUnauth, reqUnauth)
+	if wUnauth.Code != http.StatusUnauthorized && wUnauth.Code != http.StatusFound {
+		t.Errorf("Expected 401 or 302 for unauthenticated upload access, got %d", wUnauth.Code)
+	}
+
+	// 2. Tenant 2 (not owner) attempting to access Tenant 1's slip must get 403 Forbidden
+	hashPass, _ := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
+	_, _ = db.Exec(db.Rebind("INSERT OR IGNORE INTO users (name, email, password, role) VALUES ('Tenant Two', 'tenant_uploads_test@test.com', ?, 'tenant')"), string(hashPass))
+	var user2ID int64
+	_ = db.QueryRow(db.Rebind("SELECT id FROM users WHERE email = ?"), "tenant_uploads_test@test.com").Scan(&user2ID)
+	user2 := &models.User{ID: user2ID, Email: "tenant_uploads_test@test.com", Role: models.RoleTenant, Name: "Tenant Two"}
+	wCookie := httptest.NewRecorder()
+	cTest, _ := gin.CreateTestContext(wCookie)
+	cTest.Request, _ = http.NewRequest("GET", "/", nil)
+	middleware.SetUserSession(cTest, user2, false)
+	var cookieTenant2 *http.Cookie
+	for _, ck := range wCookie.Result().Cookies() {
+		if ck.Name == middleware.SessionCookieName {
+			cookieTenant2 = ck
+			break
+		}
+	}
+
+	reqTenant2, _ := http.NewRequest("GET", "/uploads/tenant1_slip.png", nil)
+	reqTenant2.AddCookie(cookieTenant2)
+	wTenant2 := httptest.NewRecorder()
+	r.ServeHTTP(wTenant2, reqTenant2)
+	if wTenant2.Code != http.StatusForbidden {
+		t.Errorf("Expected 403 Forbidden for unauthorized tenant IDOR access to slip, got %d", wTenant2.Code)
+	}
+
+	// 3. Path traversal attempt must be rejected
+	reqTraversal, _ := http.NewRequest("GET", "/uploads/..%2Fmain.go", nil)
+	wTraversal := httptest.NewRecorder()
+	r.ServeHTTP(wTraversal, reqTraversal)
+	if wTraversal.Code != http.StatusBadRequest && wTraversal.Code != http.StatusNotFound && wTraversal.Code != http.StatusUnauthorized && wTraversal.Code != http.StatusFound {
+		t.Errorf("Expected rejected response for path traversal attempt, got %d", wTraversal.Code)
+	}
+
+	// 4. Admin accessing the slip must succeed (200 OK)
+	adminUser := &models.User{ID: 1, Email: "admin@test.com", Role: models.RoleAdmin, Name: "Admin"}
+	wAdminRec := httptest.NewRecorder()
+	cAdmin, _ := gin.CreateTestContext(wAdminRec)
+	cAdmin.Request, _ = http.NewRequest("GET", "/", nil)
+	middleware.SetUserSession(cAdmin, adminUser, false)
+	var cookieAdmin *http.Cookie
+	for _, ck := range wAdminRec.Result().Cookies() {
+		if ck.Name == middleware.SessionCookieName {
+			cookieAdmin = ck
+			break
+		}
+	}
+
+	reqAdmin, _ := http.NewRequest("GET", "/uploads/tenant1_slip.png", nil)
+	reqAdmin.AddCookie(cookieAdmin)
+	wAdmin := httptest.NewRecorder()
+	r.ServeHTTP(wAdmin, reqAdmin)
+	if wAdmin.Code != http.StatusOK {
+		t.Errorf("Expected 200 OK for admin viewing upload, got %d", wAdmin.Code)
 	}
 }
 

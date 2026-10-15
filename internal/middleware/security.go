@@ -17,6 +17,8 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		// Disable unnecessary browser APIs
 		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// Enforce HTTPS in modern browsers (HSTS)
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		// Content Security Policy — blocks inline scripts from other origins,
 		// allows Bootstrap CDN, Bootstrap Icons CDN, and Google Fonts
 		c.Header("Content-Security-Policy",
