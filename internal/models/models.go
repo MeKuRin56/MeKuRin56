@@ -77,6 +77,7 @@ type Room struct {
 	Floor       int       `json:"floor"`
 	Status      string    `json:"status"` // vacant, occupied, maintenance
 	Description string    `json:"description"`
+	ImageURL    string    `json:"image_url"`
 	TenantID    *int64    `json:"tenant_id,omitempty"`
 	TenantName  string    `json:"tenant_name,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`

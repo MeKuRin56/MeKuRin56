@@ -31,26 +31,33 @@ func (db *DB) SeedData(cfg *config.Config) error {
 			floor    int
 			status   string
 			desc     string
+			imageURL string
 		}{
-			{"101", "Standard", 4500.00, 1, models.RoomStatusOccupied, "ห้องพักมาตรฐาน ชั้น 1 เตียงเดี่ยว 5 ฟุต เฟอร์นิเจอร์ครบ"},
-			{"102", "Standard", 4500.00, 1, models.RoomStatusVacant, "ห้องพักมาตรฐาน ชั้น 1 วิวสวน เงียบสงบ"},
-			{"103", "Deluxe", 5500.00, 1, models.RoomStatusVacant, "ห้องดีลักซ์ ชั้น 1 ระเบียงกว้าง ตู้เย็น ไมโครเวฟ"},
-			{"201", "Deluxe", 5500.00, 2, models.RoomStatusOccupied, "ห้องดีลักซ์ ชั้น 2 แอร์อินเวอร์เตอร์ เครื่องทำน้ำอุ่น"},
-			{"202", "Studio", 6500.00, 2, models.RoomStatusVacant, "ห้องสตูดิโอ ชั้น 2 พร้อมมุมทำอาหารและเครื่องซักผ้า"},
-			{"301", "Suite", 8000.00, 3, models.RoomStatusVacant, "ห้องสูท ชั้น 3 พื้นที่ 45 ตร.ม. ห้องนั่งเล่นแยกส่วน"},
-			{"302", "Standard", 4800.00, 3, models.RoomStatusMaintenance, "ห้องพักมาตรฐาน ชั้น 3 กำลังซ่อมระบบประปาและทาสีใหม่"},
+			{"101", "Standard", 4500.00, 1, models.RoomStatusOccupied, "ห้องพักมาตรฐาน ชั้น 1 เตียงเดี่ยว 5 ฟุต เฟอร์นิเจอร์ครบ", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"},
+			{"102", "Standard", 4500.00, 1, models.RoomStatusVacant, "ห้องพักมาตรฐาน ชั้น 1 วิวสวน เงียบสงบ", "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80"},
+			{"103", "Deluxe", 5500.00, 1, models.RoomStatusVacant, "ห้องดีลักซ์ ชั้น 1 ระเบียงกว้าง ตู้เย็น ไมโครเวฟ", "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80"},
+			{"201", "Deluxe", 5500.00, 2, models.RoomStatusOccupied, "ห้องดีลักซ์ ชั้น 2 แอร์อินเวอร์เตอร์ เครื่องทำน้ำอุ่น", "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80"},
+			{"202", "Studio", 6500.00, 2, models.RoomStatusVacant, "ห้องสตูดิโอ ชั้น 2 พร้อมมุมทำอาหารและเครื่องซักผ้า", "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80"},
+			{"301", "Suite", 8000.00, 3, models.RoomStatusVacant, "ห้องสูท ชั้น 3 พื้นที่ 45 ตร.ม. ห้องนั่งเล่นแยกส่วน", "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80"},
+			{"302", "Standard", 4800.00, 3, models.RoomStatusMaintenance, "ห้องพักมาตรฐาน ชั้น 3 กำลังซ่อมระบบประปาและทาสีใหม่", "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=800&q=80"},
 		}
 
 		insertRoomQuery := db.Rebind(`
-			INSERT INTO rooms (room_number, room_type, price, floor, status, description)
-			VALUES (?, ?, ?, ?, ?, ?)
+			INSERT INTO rooms (room_number, room_type, price, floor, status, description, image_url)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
 		`)
 		for _, r := range rooms {
-			if _, err := db.Exec(insertRoomQuery, r.number, r.roomType, r.price, r.floor, r.status, r.desc); err != nil {
+			if _, err := db.Exec(insertRoomQuery, r.number, r.roomType, r.price, r.floor, r.status, r.desc, r.imageURL); err != nil {
 				log.Printf("[DATABASE ERROR] Failed to seed room %s: %v", r.number, err)
 			}
 		}
 	}
+
+	// Backfill existing rooms that don't have images
+	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Standard'"))
+	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Deluxe'"))
+	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Studio'"))
+	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Suite'"))
 
 	// 2. Seed Admin User & Demo Tenant — DEVELOPMENT mode only
 	// In production, the First-Time Setup Wizard (/setup) handles admin creation.

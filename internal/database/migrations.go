@@ -20,6 +20,7 @@ func (db *DB) RunMigrations() error {
 			floor INTEGER NOT NULL DEFAULT 1,
 			status VARCHAR(30) NOT NULL DEFAULT 'vacant',
 			description TEXT,
+			image_url VARCHAR(500),
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);
@@ -128,6 +129,7 @@ func (db *DB) RunMigrations() error {
 			floor INTEGER NOT NULL DEFAULT 1,
 			status TEXT NOT NULL DEFAULT 'vacant',
 			description TEXT,
+			image_url TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
@@ -231,6 +233,13 @@ func (db *DB) RunMigrations() error {
 	if err != nil {
 		log.Printf("[DATABASE ERROR] Migration execution failed: %v", err)
 		return err
+	}
+
+	// Ensure image_url column exists in rooms table for existing databases
+	if db.Driver == "postgres" {
+		_, _ = db.Exec("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)")
+	} else {
+		_, _ = db.Exec("ALTER TABLE rooms ADD COLUMN image_url TEXT")
 	}
 
 	log.Printf("[DATABASE] Migrations executed successfully")

@@ -33,7 +33,7 @@ func (h *RoomHandler) ListRooms(c *gin.Context) {
 	// Base SQL with join to get tenant name if occupied
 	baseSQL := `
 		SELECT r.id, r.room_number, r.room_type, r.price, r.floor, r.status, r.description,
-		       r.created_at, r.updated_at, u.id, u.name
+		       COALESCE(r.image_url, ''), r.created_at, r.updated_at, u.id, u.name
 		FROM rooms r
 		LEFT JOIN users u ON u.room_id = r.id AND u.role = 'tenant'
 		WHERE 1=1
@@ -77,16 +77,18 @@ func (h *RoomHandler) ListRooms(c *gin.Context) {
 	var rooms []models.Room
 	for rows.Next() {
 		var r models.Room
+		var imageURL string
 		var tenantID sql.NullInt64
 		var tenantName sql.NullString
 
 		err := rows.Scan(
 			&r.ID, &r.RoomNumber, &r.RoomType, &r.Price, &r.Floor, &r.Status, &r.Description,
-			&r.CreatedAt, &r.UpdatedAt, &tenantID, &tenantName,
+			&imageURL, &r.CreatedAt, &r.UpdatedAt, &tenantID, &tenantName,
 		)
 		if err != nil {
 			continue
 		}
+		r.ImageURL = imageURL
 
 		if tenantID.Valid {
 			idVal := tenantID.Int64
@@ -146,13 +148,27 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 		status = models.RoomStatusVacant
 	}
 
+	imageURL := strings.TrimSpace(c.PostForm("image_url"))
+	if imageURL == "" {
+		switch roomType {
+		case "Deluxe":
+			imageURL = "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80"
+		case "Studio":
+			imageURL = "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80"
+		case "Suite":
+			imageURL = "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80"
+		default:
+			imageURL = "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"
+		}
+	}
+
 	db := database.GetDB()
 	query := db.Rebind(`
-		INSERT INTO rooms (room_number, room_type, price, floor, status, description)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO rooms (room_number, room_type, price, floor, status, description, image_url)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`)
 
-	_, err = db.Exec(query, roomNumber, roomType, price, floor, status, description)
+	_, err = db.Exec(query, roomNumber, roomType, price, floor, status, description, imageURL)
 	if err != nil {
 		c.Redirect(http.StatusFound, "/rooms?error=room_exists")
 		return
@@ -176,6 +192,7 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	floorStr := strings.TrimSpace(c.PostForm("floor"))
 	status := strings.TrimSpace(c.PostForm("status"))
 	description := strings.TrimSpace(c.PostForm("description"))
+	imageURL := strings.TrimSpace(c.PostForm("image_url"))
 
 	price, _ := strconv.ParseFloat(priceStr, 64)
 	floor, _ := strconv.Atoi(floorStr)
@@ -183,11 +200,11 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	db := database.GetDB()
 	query := db.Rebind(`
 		UPDATE rooms
-		SET room_number = ?, room_type = ?, price = ?, floor = ?, status = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+		SET room_number = ?, room_type = ?, price = ?, floor = ?, status = ?, description = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`)
 
-	_, err = db.Exec(query, roomNumber, roomType, price, floor, status, description, id)
+	_, err = db.Exec(query, roomNumber, roomType, price, floor, status, description, imageURL, id)
 	if err != nil {
 		c.Redirect(http.StatusFound, "/rooms?error=update_failed")
 		return

@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const floor = button.getAttribute('data-floor');
       const status = button.getAttribute('data-status');
       const desc = button.getAttribute('data-desc');
+      const image = button.getAttribute('data-image');
 
       const form = document.getElementById('editRoomForm');
       form.action = `/rooms/${id}/edit`;
@@ -48,6 +49,10 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit_floor').value = floor;
       document.getElementById('edit_status').value = status;
       document.getElementById('edit_description').value = desc || '';
+      const editImg = document.getElementById('edit_image_url');
+      if (editImg) {
+        editImg.value = image || '';
+      }
     });
   }
 

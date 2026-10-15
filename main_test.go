@@ -43,6 +43,10 @@ func setupTestApp(t *testing.T) (*gin.Engine, *database.DB, *config.Config) {
 		t.Fatalf("Failed to init database: %v", err)
 	}
 
+	// Ensure test admin password is reset for idempotent test runs
+	testHash, _ := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
+	_, _ = db.Exec(db.Rebind("UPDATE users SET password = ? WHERE email = 'admin@dormitory.com'"), string(testHash))
+
 	middleware.InitAuth(cfg)
 
 	r := gin.New()
