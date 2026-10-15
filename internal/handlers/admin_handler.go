@@ -38,6 +38,7 @@ func (h *AdminHandler) ShowAdminDashboard(c *gin.Context) {
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM users WHERE role = ?"), models.RoleTenant).Scan(&stats.TotalTenants)
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM maintenance_requests WHERE status = ?"), models.MaintStatusPending).Scan(&stats.PendingRequests)
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM payments WHERE status = ?"), models.PaymentStatusPending).Scan(&stats.PendingPayments)
+	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM room_bookings WHERE status = ?"), models.BookingStatusPending).Scan(&stats.PendingBookings)
 
 	currentMonth := time.Now().Format("2006-01")
 	var monthlyRev sql.NullFloat64

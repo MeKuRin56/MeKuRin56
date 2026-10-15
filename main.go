@@ -77,6 +77,7 @@ func main() {
 	paymentHandler := handlers.NewPaymentHandler(cfg)
 	adminHandler := handlers.NewAdminHandler(cfg)
 	tenantHandler := handlers.NewTenantHandler(cfg)
+	bookingHandler := handlers.NewBookingHandler(cfg)
 
 	// ==================== Public & Home Routes ====================
 	r.GET("/", func(c *gin.Context) {
@@ -112,10 +113,12 @@ func main() {
 	{
 		tenantGroup.GET("/dashboard", tenantHandler.ShowTenantDashboard)
 		tenantGroup.POST("/release-room", tenantHandler.ReleaseRoom)
+		tenantGroup.GET("/bookings", bookingHandler.ShowMyBookings)
+		tenantGroup.POST("/bookings/:id/cancel", bookingHandler.CancelBooking)
 	}
 
-	// Room rental action (Tenant only)
-	r.POST("/rooms/:id/rent", middleware.AuthRequired(), middleware.RoleRequired(models.RoleTenant), roomHandler.RentRoom)
+	// Room booking action (Tenant submits request — admin must approve)
+	r.POST("/rooms/:id/book", middleware.AuthRequired(), middleware.RoleRequired(models.RoleTenant), roomHandler.BookRoom)
 
 	// ==================== Maintenance Routes (Authenticated) ====================
 	maintGroup := r.Group("/maintenance")
@@ -143,6 +146,9 @@ func main() {
 		adminGroup.GET("/dashboard", adminHandler.ShowAdminDashboard)
 		adminGroup.POST("/assign-room", adminHandler.AssignTenantRoom)
 		adminGroup.POST("/unassign-room", adminHandler.UnassignTenantRoom)
+		adminGroup.GET("/bookings", bookingHandler.ShowBookings)
+		adminGroup.POST("/bookings/:id/approve", bookingHandler.ApproveBooking)
+		adminGroup.POST("/bookings/:id/reject", bookingHandler.RejectBooking)
 	}
 
 	// Admin Room Management

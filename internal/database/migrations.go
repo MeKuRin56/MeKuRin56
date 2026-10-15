@@ -63,11 +63,25 @@ func (db *DB) RunMigrations() error {
 			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);
 
+		CREATE TABLE IF NOT EXISTS room_bookings (
+			id SERIAL PRIMARY KEY,
+			room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+			tenant_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status VARCHAR(30) NOT NULL DEFAULT 'pending',
+			message TEXT,
+			admin_note TEXT,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 		CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 		CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
 		CREATE INDEX IF NOT EXISTS idx_maintenance_tenant ON maintenance_requests(tenant_id);
 		CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_tenant ON room_bookings(tenant_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_room ON room_bookings(room_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_status ON room_bookings(status);
 		`
 	} else {
 		// SQLite compatible schema
@@ -123,11 +137,25 @@ func (db *DB) RunMigrations() error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 
+		CREATE TABLE IF NOT EXISTS room_bookings (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+			tenant_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			message TEXT,
+			admin_note TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 		CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 		CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
 		CREATE INDEX IF NOT EXISTS idx_maintenance_tenant ON maintenance_requests(tenant_id);
 		CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_tenant ON room_bookings(tenant_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_room ON room_bookings(room_id);
+		CREATE INDEX IF NOT EXISTS idx_bookings_status ON room_bookings(status);
 		`
 	}
 

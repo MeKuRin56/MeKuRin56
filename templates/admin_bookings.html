@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการคำขอจองห้อง | Booking Requests - Dormitory MS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-building-check"></i>
+        <span data-i18n="app.name">Dormitory MS</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="/admin/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+          <li class="nav-item"><a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/admin/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a></li>
+          <li class="nav-item"><a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a></li>
+          <li class="nav-item"><a class="nav-link" href="/payments" data-i18n="nav.payments"><i class="bi bi-credit-card me-1"></i>ชำระเงิน</a></li>
+        </ul>
+        <ul class="navbar-nav ms-auto align-items-center gap-2">
+          <li class="nav-item">
+            <button id="langToggle" class="btn btn-sm btn-outline-secondary" onclick="window.i18n && window.i18n.toggle()">EN</button>
+          </li>
+          <li class="nav-item">
+            <button id="themeToggle" class="btn btn-sm btn-outline-secondary" onclick="window.theme && window.theme.toggle()">
+              <i class="bi bi-moon-fill"></i>
+            </button>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-sm btn-outline-danger" href="/logout"><i class="bi bi-box-arrow-right me-1"></i><span data-i18n="nav.logout">ออกจากระบบ</span></a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="d-flex align-items-center mb-4 gap-2">
+      <i class="bi bi-calendar-check fs-3 text-warning"></i>
+      <div>
+        <h2 class="mb-0 fw-bold">คำขอจองห้องพัก</h2>
+        <p class="text-muted mb-0 small">ตรวจสอบและอนุมัติ / ปฏิเสธคำขอจองจากผู้เช่า</p>
+      </div>
+    </div>
+
+    {{if .Success}}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>
+      {{if eq .Success "approved"}}✅ อนุมัติคำขอจองเรียบร้อยแล้ว ห้องพักถูกกำหนดให้ผู้เช่าแล้ว{{end}}
+      {{if eq .Success "rejected"}}❌ ปฏิเสธคำขอจองเรียบร้อยแล้ว{{end}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {{end}}
+
+    {{if .Error}}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {{if eq .Error "not_found_or_not_pending"}}ไม่พบคำขอ หรือคำขอไม่ได้อยู่ในสถานะ pending{{end}}
+      {{if eq .Error "room_no_longer_vacant"}}ห้องพักไม่ว่างแล้ว ไม่สามารถอนุมัติได้{{end}}
+      {{if eq .Error "update_failed"}}เกิดข้อผิดพลาด ไม่สามารถอัปเดตข้อมูลได้{{end}}
+      {{if eq .Error "assign_failed"}}เกิดข้อผิดพลาด ไม่สามารถกำหนดห้องให้ผู้เช่าได้{{end}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {{end}}
+
+    <!-- Filter -->
+    <div class="card-custom p-3 mb-4">
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="/admin/bookings" class="btn btn-sm {{if eq .FilterStatus ""}}btn-primary-custom{{else}}btn-outline-secondary{{end}}">ทั้งหมด</a>
+        <a href="/admin/bookings?status=pending" class="btn btn-sm {{if eq .FilterStatus "pending"}}btn-warning{{else}}btn-outline-warning{{end}}">⏳ รออนุมัติ</a>
+        <a href="/admin/bookings?status=approved" class="btn btn-sm {{if eq .FilterStatus "approved"}}btn-success{{else}}btn-outline-success{{end}}">✅ อนุมัติแล้ว</a>
+        <a href="/admin/bookings?status=rejected" class="btn btn-sm {{if eq .FilterStatus "rejected"}}btn-danger{{else}}btn-outline-danger{{end}}">❌ ปฏิเสธ</a>
+        <a href="/admin/bookings?status=cancelled" class="btn btn-sm {{if eq .FilterStatus "cancelled"}}btn-secondary{{else}}btn-outline-secondary{{end}}">🚫 ยกเลิกแล้ว</a>
+      </div>
+    </div>
+
+    {{if .Bookings}}
+    <div class="row g-3">
+      {{range .Bookings}}
+      <div class="col-12">
+        <div class="card-custom p-0 overflow-hidden">
+          <div class="d-flex align-items-center px-4 py-3 gap-3"
+               style="border-left: 4px solid {{if eq .Status "pending"}}#ffc107{{else if eq .Status "approved"}}#198754{{else if eq .Status "rejected"}}#dc3545{{else}}#6c757d{{end}};">
+
+            <!-- Room Info -->
+            <div class="flex-grow-1">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="fw-bold fs-5">ห้อง {{.RoomNumber}}</span>
+                <span class="badge bg-secondary">{{.RoomType}}</span>
+                <span class="fw-semibold text-success">฿{{printf "%.0f" .Price}}/เดือน</span>
+                {{if eq .Status "pending"}}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>รออนุมัติ</span>
+                {{else if eq .Status "approved"}}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>อนุมัติแล้ว</span>
+                {{else if eq .Status "rejected"}}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>ปฏิเสธ</span>
+                {{else if eq .Status "cancelled"}}
+                  <span class="badge bg-secondary"><i class="bi bi-slash-circle me-1"></i>ยกเลิกแล้ว</span>
+                {{end}}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-person me-1"></i><strong>{{.TenantName}}</strong>
+                &nbsp;|&nbsp; <i class="bi bi-envelope me-1"></i>{{.TenantEmail}}
+                {{if .TenantPhone}}&nbsp;|&nbsp; <i class="bi bi-telephone me-1"></i>{{.TenantPhone}}{{end}}
+              </div>
+              {{if .Message}}
+              <div class="mt-1 small text-muted"><i class="bi bi-chat-left-text me-1"></i><em>ข้อความ: {{.Message}}</em></div>
+              {{end}}
+              {{if .AdminNote}}
+              <div class="mt-1 small"><i class="bi bi-shield-check me-1 text-info"></i>หมายเหตุ Admin: <em>{{.AdminNote}}</em></div>
+              {{end}}
+              <div class="text-muted small mt-1"><i class="bi bi-calendar me-1"></i>ส่งคำขอ: {{.CreatedAt.Format "02/01/2006 15:04 น."}}</div>
+            </div>
+
+            <!-- Actions (pending only) -->
+            {{if eq .Status "pending"}}
+            <div class="d-flex flex-column gap-2 ms-3">
+              <!-- Approve -->
+              <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{.ID}}">
+                <i class="bi bi-check-lg me-1"></i>อนุมัติ
+              </button>
+              <!-- Reject -->
+              <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{.ID}}">
+                <i class="bi bi-x-lg me-1"></i>ปฏิเสธ
+              </button>
+            </div>
+
+            <!-- Approve Modal -->
+            <div class="modal fade" id="approveModal{{.ID}}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-check-circle-fill text-success me-2"></i>อนุมัติคำขอจอง</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form action="/admin/bookings/{{.ID}}/approve" method="POST">
+                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                    <div class="modal-body">
+                      <p>อนุมัติการจองห้อง <strong>{{.RoomNumber}}</strong> ให้กับ <strong>{{.TenantName}}</strong> ?</p>
+                      <div class="mb-3">
+                        <label class="form-label">หมายเหตุถึงผู้เช่า (ไม่บังคับ)</label>
+                        <textarea name="admin_note" class="form-control" rows="2" placeholder="เช่น ยินดีต้อนรับ! กรุณาติดต่อรับกุญแจได้ที่..."></textarea>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                      <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>ยืนยันอนุมัติ</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reject Modal -->
+            <div class="modal fade" id="rejectModal{{.ID}}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-x-circle-fill text-danger me-2"></i>ปฏิเสธคำขอจอง</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form action="/admin/bookings/{{.ID}}/reject" method="POST">
+                    <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                    <div class="modal-body">
+                      <p>ปฏิเสธการจองห้อง <strong>{{.RoomNumber}}</strong> ของ <strong>{{.TenantName}}</strong></p>
+                      <div class="mb-3">
+                        <label class="form-label">เหตุผลที่ปฏิเสธ <span class="text-danger">*</span></label>
+                        <textarea name="admin_note" class="form-control" rows="2" required placeholder="เช่น ห้องถูกจองแล้ว, ข้อมูลไม่ครบถ้วน..."></textarea>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                      <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i>ยืนยันปฏิเสธ</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {{end}}
+
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-calendar-x display-4 mb-3 d-block opacity-50"></i>
+      <h5>ไม่มีคำขอจองห้องพัก</h5>
+      <p>ยังไม่มีผู้เช่าส่งคำขอจอง</p>
+    </div>
+    {{end}}
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

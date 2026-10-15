@@ -225,8 +225,9 @@ func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/rooms?success=deleted")
 }
 
-// RentRoom allows an authenticated tenant to rent/book a vacant room
-func (h *RoomHandler) RentRoom(c *gin.Context) {
+// BookRoom allows a tenant to submit a booking request for a vacant room.
+// The room is NOT immediately assigned — admin must approve first.
+func (h *RoomHandler) BookRoom(c *gin.Context) {
 	user := middleware.GetCurrentUser(c)
 	if user == nil || user.Role != models.RoleTenant {
 		c.Redirect(http.StatusFound, "/login?next=/rooms")
@@ -242,33 +243,41 @@ func (h *RoomHandler) RentRoom(c *gin.Context) {
 
 	db := database.GetDB()
 
-	// Check that room is currently vacant
-	var status string
-	var roomNumber string
-	err = db.QueryRow(db.Rebind("SELECT status, room_number FROM rooms WHERE id = ?"), roomID).Scan(&status, &roomNumber)
-	if err != nil || status != models.RoomStatusVacant {
+	// Verify room exists and is vacant
+	var roomStatus, roomNumber string
+	err = db.QueryRow(db.Rebind("SELECT status, room_number FROM rooms WHERE id = ?"), roomID).Scan(&roomStatus, &roomNumber)
+	if err != nil || roomStatus != models.RoomStatusVacant {
 		c.Redirect(http.StatusFound, "/rooms?error=room_not_vacant")
 		return
 	}
 
-	// If tenant already had an old room, mark the old room as vacant
-	if user.RoomID != nil && *user.RoomID != roomID {
-		_, _ = db.Exec(db.Rebind("UPDATE rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), models.RoomStatusVacant, *user.RoomID)
-	}
-
-	// Update user's room_id
-	_, err = db.Exec(db.Rebind("UPDATE users SET room_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), roomID, user.ID)
-	if err != nil {
-		c.Redirect(http.StatusFound, "/rooms?error=rent_failed")
+	// Prevent tenant from booking if they already have an active/pending booking
+	var existingCount int
+	checkQ := db.Rebind("SELECT COUNT(*) FROM room_bookings WHERE tenant_id = ? AND status = 'pending'")
+	_ = db.QueryRow(checkQ, user.ID).Scan(&existingCount)
+	if existingCount > 0 {
+		c.Redirect(http.StatusFound, "/rooms?error=already_pending")
 		return
 	}
 
-	// Mark new room as occupied
-	_, err = db.Exec(db.Rebind("UPDATE rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), models.RoomStatusOccupied, roomID)
-	if err != nil {
-		c.Redirect(http.StatusFound, "/rooms?error=rent_failed")
+	// Prevent double-booking the same room
+	var roomBookingCount int
+	checkRoomQ := db.Rebind("SELECT COUNT(*) FROM room_bookings WHERE room_id = ? AND status = 'pending'")
+	_ = db.QueryRow(checkRoomQ, roomID).Scan(&roomBookingCount)
+	if roomBookingCount > 0 {
+		c.Redirect(http.StatusFound, "/rooms?error=room_already_requested")
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/tenant/dashboard?success=rented")
+	message := c.PostForm("message")
+
+	// Create booking record with status = pending
+	insertQ := db.Rebind("INSERT INTO room_bookings (room_id, tenant_id, status, message) VALUES (?, ?, 'pending', ?)")
+	_, err = db.Exec(insertQ, roomID, user.ID, message)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/rooms?error=booking_failed")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/tenant/dashboard?success=booking_requested")
 }

@@ -40,6 +40,14 @@ const (
 	PaymentStatusRejected = "rejected"
 )
 
+// Booking status constants
+const (
+	BookingStatusPending  = "pending"
+	BookingStatusApproved = "approved"
+	BookingStatusRejected = "rejected"
+	BookingStatusCancelled = "cancelled"
+)
+
 type User struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -100,13 +108,31 @@ type Payment struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+type RoomBooking struct {
+	ID         int64     `json:"id"`
+	RoomID     int64     `json:"room_id"`
+	RoomNumber string    `json:"room_number"`
+	RoomType   string    `json:"room_type"`
+	Price      float64   `json:"price"`
+	TenantID   int64     `json:"tenant_id"`
+	TenantName string    `json:"tenant_name"`
+	TenantEmail string   `json:"tenant_email"`
+	TenantPhone string   `json:"tenant_phone"`
+	Status     string    `json:"status"` // pending, approved, rejected, cancelled
+	Message    string    `json:"message"`
+	AdminNote  string    `json:"admin_note"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 type DashboardStats struct {
-	TotalRooms        int     `json:"total_rooms"`
-	VacantRooms       int     `json:"vacant_rooms"`
-	OccupiedRooms     int     `json:"occupied_rooms"`
-	MaintenanceRooms  int     `json:"maintenance_rooms"`
-	TotalTenants      int     `json:"total_tenants"`
-	PendingRequests   int     `json:"pending_requests"`
-	PendingPayments   int     `json:"pending_payments"`
-	MonthlyRevenue    float64 `json:"monthly_revenue"`
+	TotalRooms      int     `json:"total_rooms"`
+	VacantRooms     int     `json:"vacant_rooms"`
+	OccupiedRooms   int     `json:"occupied_rooms"`
+	MaintenanceRooms int    `json:"maintenance_rooms"`
+	TotalTenants    int     `json:"total_tenants"`
+	PendingRequests int     `json:"pending_requests"`
+	PendingPayments int     `json:"pending_payments"`
+	PendingBookings int     `json:"pending_bookings"`
+	MonthlyRevenue  float64 `json:"monthly_revenue"`
 }

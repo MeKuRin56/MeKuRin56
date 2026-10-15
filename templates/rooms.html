@@ -194,11 +194,15 @@
                           <i class="bi bi-check-circle-fill me-1"></i> <span data-i18n="rooms.myCurrentRoom">ห้องที่คุณกำลังเช่าอยู่</span>
                         </div>
                       {{else if eq .Status "vacant"}}
-                        <form action="/rooms/{{.ID}}/rent" method="POST">
+                        <form action="/rooms/{{.ID}}/book" method="POST">
                           <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
-                          <button type="submit" class="btn btn-sm btn-primary-custom w-100 py-2 fw-semibold" onclick="return confirm('ยืนยันการเช่าห้องพักหมายเลข {{.RoomNumber}} ใช่หรือไม่?');">
-                            <i class="bi bi-key-fill me-1"></i> <span data-i18n="rooms.bookRoom">เช่าห้องนี้</span>
+                          <input type="hidden" name="message" value="">
+                          <button type="submit" class="btn btn-sm btn-primary-custom w-100 py-2 fw-semibold" onclick="return confirm('ส่งคำขอจองห้องพักหมายเลข {{.RoomNumber}} ?\n\nAdmin จะตรวจสอบและอนุมัติภายหลัง');">
+                            <i class="bi bi-send-fill me-1"></i> <span data-i18n="rooms.bookRoom">ขอจองห้องนี้</span>
                           </button>
+                          <div class="text-muted small text-center mt-1">
+                            <i class="bi bi-clock me-1"></i><span data-i18n="rooms.pendingApproval">รอ Admin อนุมัติ</span>
+                          </div>
                         </form>
                       {{else if eq .Status "occupied"}}
                         <button class="btn btn-sm btn-secondary-custom w-100" disabled>
