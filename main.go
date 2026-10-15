@@ -130,7 +130,7 @@ func main() {
 	{
 		profileGroup.GET("", profileHandler.ShowProfile)
 		profileGroup.POST("", profileHandler.UpdateProfile)
-		profileGroup.POST("/password", profileHandler.ChangePassword)
+		profileGroup.POST("/password", authLimiter.Middleware(), profileHandler.ChangePassword)
 	}
 
 	// Room booking action (Tenant submits request — admin must approve)

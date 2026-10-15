@@ -229,7 +229,7 @@ func (h *BookingHandler) ShowMyBookings(c *gin.Context) {
 		"Title":     "คำขอจองของฉัน",
 		"User":      user,
 		"Bookings":  bookings,
-		"CSRFToken": c.GetString("csrf_token"),
+		"CSRFToken": middleware.GetCSRFToken(c),
 		"Success":   c.Query("success"),
 		"Error":     c.Query("error"),
 	})
