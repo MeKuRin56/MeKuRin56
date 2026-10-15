@@ -58,7 +58,7 @@
             </div>
           {{end}}
 
-          <form action="/login" method="POST">
+          <form action="/login" method="POST" autocomplete="off">
             <!-- CSRF Protection Token -->
             <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
             <input type="hidden" name="next" value="{{.Next}}">
@@ -67,7 +67,7 @@
               <label for="email" class="form-label" data-i18n="auth.email">ที่อยู่อีเมล</label>
               <div class="input-group">
                 <span class="input-group-text bg-secondary-subtle border-secondary"><i class="bi bi-envelope"></i></span>
-                <input type="email" class="form-control" id="email" name="email" value="{{.Email}}" required autofocus placeholder="name@example.com" data-i18n-placeholder="auth.emailPlaceholder">
+                <input type="email" class="form-control" id="email" name="email" value="{{.Email}}" required autofocus placeholder="name@example.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="off">
               </div>
             </div>
 
@@ -75,7 +75,7 @@
               <label for="password" class="form-label" data-i18n="auth.password">รหัสผ่าน</label>
               <div class="input-group">
                 <span class="input-group-text bg-secondary-subtle border-secondary"><i class="bi bi-key"></i></span>
-                <input type="password" class="form-control" id="password" name="password" required placeholder="อย่างน้อย 6 ตัวอักษร" data-i18n-placeholder="auth.passwordPlaceholder">
+                <input type="password" class="form-control" id="password" name="password" required placeholder="อย่างน้อย 6 ตัวอักษร" data-i18n-placeholder="auth.passwordPlaceholder" autocomplete="new-password">
               </div>
             </div>
 
