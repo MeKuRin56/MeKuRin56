@@ -26,7 +26,7 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 				"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
 				"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "+
 				"font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "+
-				"img-src 'self' data: blob:; "+
+				"img-src 'self' data: blob: https:; "+
 				"connect-src 'self'; "+
 				"frame-ancestors 'self'; "+
 				"base-uri 'self'; "+

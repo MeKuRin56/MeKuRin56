@@ -21,9 +21,8 @@ func (db *DB) SeedData(cfg *config.Config) error {
 		return err
 	}
 
-	if roomCount == 0 && !cfg.IsProduction() {
-		// Only seed demo rooms in development mode
-		log.Println("[DATABASE] Seeding default rooms (development mode)...")
+	if roomCount == 0 {
+		log.Println("[DATABASE] Seeding default rooms...")
 		rooms := []struct {
 			number   string
 			roomType string
@@ -59,21 +58,14 @@ func (db *DB) SeedData(cfg *config.Config) error {
 	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Studio'"))
 	_, _ = db.Exec(db.Rebind("UPDATE rooms SET image_url = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80' WHERE (image_url IS NULL OR image_url = '') AND room_type = 'Suite'"))
 
-	// 2. Seed Admin User & Demo Tenant — DEVELOPMENT mode only
-	// In production, the First-Time Setup Wizard (/setup) handles admin creation.
-	// No hardcoded credentials ever reach the live server this way.
-	if cfg.IsProduction() {
-		log.Println("[DATABASE] Production mode: skipping default accounts. Use the Setup Wizard at /setup to create your admin account.")
-		return nil
-	}
-
-	// Development: create default admin if env vars are set
+	// 2. Seed Admin User
+	// Automatically initializes the secure administrator account configured in Config
 	if cfg.AdminEmail != "" {
 		var adminID int64
 		checkAdminQuery := db.Rebind("SELECT id FROM users WHERE email = ?")
 		err = db.QueryRow(checkAdminQuery, cfg.AdminEmail).Scan(&adminID)
 		if err == sql.ErrNoRows {
-			log.Printf("[DATABASE] Creating default admin account: %s", cfg.AdminEmail)
+			log.Printf("[DATABASE] Initializing admin account: %s", cfg.AdminEmail)
 			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
 			if err != nil {
 				return err

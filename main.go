@@ -113,28 +113,6 @@ func main() {
 	profileHandler := handlers.NewProfileHandler(cfg)
 	invoiceHandler := handlers.NewInvoiceHandler(cfg)
 	announcementHandler := handlers.NewAnnouncementHandler(cfg)
-	setupHandler := handlers.NewSetupHandler(cfg)
-
-	// ==================== First-Time Setup Wizard ====================
-	// Public: no auth needed — locks itself permanently once admin exists
-	r.GET("/setup", setupHandler.ShowSetup)
-	r.POST("/setup", setupHandler.HandleSetup)
-
-	// Redirect all routes to /setup when no admin account exists yet
-	r.Use(func(c *gin.Context) {
-		path := c.Request.URL.Path
-		if path == "/setup" || path == "/login" || path == "/register" ||
-			strings.HasPrefix(path, "/static") || strings.HasPrefix(path, "/locales") {
-			c.Next()
-			return
-		}
-		if !handlers.HasAdminUser() {
-			c.Redirect(http.StatusFound, "/setup")
-			c.Abort()
-			return
-		}
-		c.Next()
-	})
 
 	// ==================== Public & Home Routes ====================
 	r.GET("/", func(c *gin.Context) {
