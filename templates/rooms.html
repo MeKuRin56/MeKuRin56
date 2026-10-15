@@ -189,7 +189,7 @@
                       </div>
                     {{else}}
                       <!-- Tenant View -->
-                      {{if and $.User.RoomID (eq *$.User.RoomID .ID)}}
+                      {{if and $.User.RoomID (eq (derefInt64 $.User.RoomID) .ID)}}
                         <div class="p-2 rounded bg-success-subtle text-success text-center fw-semibold small">
                           <i class="bi bi-check-circle-fill me-1"></i> <span data-i18n="rooms.myCurrentRoom">ห้องที่คุณกำลังเช่าอยู่</span>
                         </div>

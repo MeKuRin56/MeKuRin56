@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -54,7 +55,16 @@ func main() {
 	// CSRF Protection Middleware
 	r.Use(middleware.CSRFMiddleware(cfg.IsProduction()))
 
-	// HTML Templates
+	// HTML Templates with custom functions
+	r.SetFuncMap(template.FuncMap{
+		// derefInt64 safely dereferences a *int64 pointer, returns 0 if nil
+		"derefInt64": func(p *int64) int64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
+	})
 	r.LoadHTMLGlob("templates/*")
 
 	// Rate limiter for login & registration (15 attempts per minute per IP)
