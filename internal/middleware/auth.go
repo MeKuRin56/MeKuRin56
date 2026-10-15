@@ -69,6 +69,9 @@ func SetUserSession(c *gin.Context, user *models.User, isProduction bool) {
 	sig := sign([]byte(payload))
 	cookieVal := fmt.Sprintf("%s.%s", payload, sig)
 
+	// Automatically detect HTTPS (either via direct TLS or via reverse-proxy header like Render)
+	isSecure := isProduction || c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+
 	// Set secure HttpOnly cookie
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(
@@ -77,13 +80,14 @@ func SetUserSession(c *gin.Context, user *models.User, isProduction bool) {
 		int(24*time.Hour.Seconds()),
 		"/",
 		"",
-		isProduction,
+		isSecure,
 		true, // HttpOnly
 	)
 }
 
 // ClearUserSession removes the session cookie
 func ClearUserSession(c *gin.Context, isProduction bool) {
+	isSecure := isProduction || c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(
 		SessionCookieName,
@@ -91,7 +95,7 @@ func ClearUserSession(c *gin.Context, isProduction bool) {
 		-1,
 		"/",
 		"",
-		isProduction,
+		isSecure,
 		true,
 	)
 }

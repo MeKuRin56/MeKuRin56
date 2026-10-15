@@ -227,6 +227,30 @@ func (h *AuthHandler) HandleRegister(c *gin.Context) {
 		return
 	}
 
+	// Weak password blocklist (NIST Guidelines)
+	lowerPass := strings.ToLower(password)
+	weakPasswords := map[string]bool{
+		"12345678": true, "123456789": true, "1234567890": true,
+		"password": true, "qwerty123": true, "admin1234": true,
+		"password123": true, "11111111": true, "00000000": true,
+	}
+	if weakPasswords[lowerPass] {
+		msg := "รหัสผ่านนี้ง่ายเกินไปและไม่ปลอดภัย กรุณาเลือกรหัสผ่านที่มีความซับซ้อนมากขึ้น"
+		if isAPI {
+			c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+			return
+		}
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+			"Title":     "สมัครสมาชิก | Register",
+			"Error":     msg,
+			"Name":      name,
+			"Email":     email,
+			"Phone":     phone,
+			"CSRFToken": middleware.GetCSRFToken(c),
+		})
+		return
+	}
+
 	if password != confirmPassword {
 		msg := "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน (Passwords do not match)"
 		if isAPI {
@@ -377,8 +401,31 @@ func (h *AuthHandler) DemoLogin(c *gin.Context) {
 		&user.ID, &user.Name, &user.Email, &user.Role, &user.Phone, &roomID, &roomNo, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/login?error=demo_not_found")
-		return
+		// Auto-recovery: If user was not found, auto-create the demo account immediately
+		if role == "admin" {
+			hashedPass, _ := bcrypt.GenerateFromPassword([]byte("Worachat1230"), bcrypt.DefaultCost)
+			_, _ = db.Exec(db.Rebind("INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)"),
+				"ผู้ดูแลระบบ (Admin)", targetEmail, string(hashedPass), models.RoleAdmin, "081-234-5678")
+		} else {
+			hashedTenantPass, _ := bcrypt.GenerateFromPassword([]byte("tenant123456"), bcrypt.DefaultCost)
+			var r101ID int64
+			_ = db.QueryRow(db.Rebind("SELECT id FROM rooms WHERE room_number = '101'")).Scan(&r101ID)
+			if r101ID > 0 {
+				_, _ = db.Exec(db.Rebind("INSERT INTO users (name, email, password, role, phone, room_id) VALUES (?, ?, ?, ?, ?, ?)"),
+					"สมชาย ใจดี (Somchai Jaidee)", targetEmail, string(hashedTenantPass), models.RoleTenant, "089-987-6543", r101ID)
+			} else {
+				_, _ = db.Exec(db.Rebind("INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)"),
+					"สมชาย ใจดี (Somchai Jaidee)", targetEmail, string(hashedTenantPass), models.RoleTenant, "089-987-6543")
+			}
+		}
+		// Re-query
+		err = db.QueryRow(query, targetEmail).Scan(
+			&user.ID, &user.Name, &user.Email, &user.Role, &user.Phone, &roomID, &roomNo, &user.CreatedAt, &user.UpdatedAt,
+		)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/login?error=demo_not_found")
+			return
+		}
 	}
 
 	if roomID.Valid {
@@ -389,7 +436,7 @@ func (h *AuthHandler) DemoLogin(c *gin.Context) {
 		user.RoomNo = roomNo.String
 	}
 
-	middleware.SetUserSession(c, &user, false)
+	middleware.SetUserSession(c, &user, h.cfg.IsProduction())
 
 	if user.Role == models.RoleAdmin {
 		c.Redirect(http.StatusFound, "/admin/dashboard?success=demo_admin")

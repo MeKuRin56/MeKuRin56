@@ -89,13 +89,22 @@
             <span class="position-absolute top-50 start-50 translate-middle px-2 text-secondary small bg-body fw-semibold">หรือทดสอบระบบทันที (Demo)</span>
           </div>
 
-          <div class="d-grid gap-2 mb-4">
+          <div class="d-grid gap-2 mb-3">
             <a href="/demo-login?role=tenant" class="btn btn-outline-success fw-semibold d-flex align-items-center justify-content-center py-2">
-              <i class="bi bi-key-fill me-2"></i>เข้าใช้งานเป็น "ลูกบ้าน" (ห้อง 101)
+              <i class="bi bi-key-fill me-2"></i>เข้าใช้งานทันที: "ลูกบ้าน" (ห้อง 101)
             </a>
             <a href="/demo-login?role=admin" class="btn btn-outline-dark fw-semibold d-flex align-items-center justify-content-center py-2">
-              <i class="bi bi-shield-lock-fill me-2"></i>เข้าใช้งานเป็น "นิติบุคคล / ช่าง"
+              <i class="bi bi-shield-lock-fill me-2"></i>เข้าใช้งานทันที: "นิติบุคคล / ช่าง"
             </a>
+          </div>
+          <div class="d-flex justify-content-center gap-2 mb-4 small">
+            <button type="button" class="btn btn-sm btn-link text-decoration-none text-secondary p-0" onclick="fillForm('tenant@dormitory.com', 'tenant123456')">
+              <i class="bi bi-pencil-square me-1"></i>เติมข้อมูลลูกบ้านในฟอร์ม
+            </button>
+            <span class="text-secondary">|</span>
+            <button type="button" class="btn btn-sm btn-link text-decoration-none text-secondary p-0" onclick="fillForm('admin56@gmail.com', 'Worachat1230')">
+              <i class="bi bi-pencil-square me-1"></i>เติมข้อมูลแอดมินในฟอร์ม
+            </button>
           </div>
 
           <div class="text-center">
@@ -107,6 +116,15 @@
       </div>
     </div>
   </div>
+
+  <script>
+    function fillForm(email, pass) {
+      var em = document.getElementById('email');
+      var pw = document.getElementById('password');
+      if (em) em.value = email;
+      if (pw) pw.value = pass;
+    }
+  </script>
 
   <footer>
     <div class="container text-center">

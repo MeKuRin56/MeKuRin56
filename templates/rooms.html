@@ -177,7 +177,7 @@
                   {{if .Description}}{{.Description}}{{else}}ห้องพักสภาพดี พร้อมเข้าอยู่{{end}}
                 </p>
 
-                {{if .TenantName}}
+                {{if and .TenantName $.User (or (eq $.User.Role "admin") (and $.User.RoomID (eq (derefInt64 $.User.RoomID) .ID)))}}
                   <div class="p-2 rounded bg-secondary-subtle small mb-3">
                     <span class="text-muted" data-i18n="rooms.tenant">ผู้เช่า:</span> <strong>{{.TenantName}}</strong>
                   </div>

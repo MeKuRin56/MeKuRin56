@@ -74,6 +74,8 @@ func (h *RoomHandler) ListRooms(c *gin.Context) {
 	}
 	defer rows.Close()
 
+	currentUser := middleware.GetCurrentUser(c)
+
 	var rooms []models.Room
 	for rows.Next() {
 		var r models.Room
@@ -95,13 +97,16 @@ func (h *RoomHandler) ListRooms(c *gin.Context) {
 			r.TenantID = &idVal
 		}
 		if tenantName.Valid {
-			r.TenantName = tenantName.String
+			// PRIVACY/PII PROTECTION: Only Admins or the tenant themselves may see the tenant's name
+			if currentUser != nil && (currentUser.Role == models.RoleAdmin || (currentUser.RoomID != nil && *currentUser.RoomID == r.ID)) {
+				r.TenantName = tenantName.String
+			} else {
+				r.TenantName = ""
+			}
 		}
 
 		rooms = append(rooms, r)
 	}
-
-	currentUser := middleware.GetCurrentUser(c)
 
 	// API or JSON request
 	if c.ContentType() == "application/json" || c.GetHeader("Accept") == "application/json" || c.Query("format") == "json" {

@@ -33,7 +33,7 @@
     "email": "Email Address",
     "emailPlaceholder": "name@example.com",
     "password": "Password",
-    "passwordPlaceholder": "Minimum 6 characters",
+    "passwordPlaceholder": "Minimum 8 characters",
     "confirmPassword": "Confirm Password",
     "confirmPasswordPlaceholder": "Re-enter your password",
     "name": "Full Name",

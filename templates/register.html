@@ -91,15 +91,18 @@
                 <label for="password" class="form-label" data-i18n="auth.password">รหัสผ่าน</label>
                 <div class="input-group">
                   <span class="input-group-text bg-secondary-subtle border-secondary"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="password" name="password" required minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร" data-i18n-placeholder="auth.passwordPlaceholder">
+                  <input type="password" class="form-control" id="password" name="password" required minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" data-i18n-placeholder="auth.passwordPlaceholder">
                 </div>
               </div>
               <div class="col-md-6">
                 <label for="confirm_password" class="form-label" data-i18n="auth.confirmPassword">ยืนยันรหัสผ่าน</label>
                 <div class="input-group">
                   <span class="input-group-text bg-secondary-subtle border-secondary"><i class="bi bi-check2-circle"></i></span>
-                  <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="6" placeholder="กรอกรหัสผ่านอีกครั้ง" data-i18n-placeholder="auth.confirmPasswordPlaceholder">
+                  <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8" placeholder="กรอกรหัสผ่านอีกครั้ง" data-i18n-placeholder="auth.confirmPasswordPlaceholder">
                 </div>
+              </div>
+              <div class="col-12">
+                <div class="form-text small text-muted"><i class="bi bi-shield-lock me-1 text-primary"></i>นโยบายรหัสผ่าน: ความยาวขั้นต่ำ 8 ตัวอักษร ป้องกันรหัสผ่านง่ายทั่วไป</div>
               </div>
             </div>
 
