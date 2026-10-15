@@ -23,10 +23,13 @@
       <div class="collapse navbar-collapse" id="navbarMain">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="/admin/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
-          <li class="nav-item"><a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/tenants"><i class="bi bi-people me-1"></i>ผู้เช่า</a></li>
           <li class="nav-item"><a class="nav-link active" href="/admin/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/invoices"><i class="bi bi-receipt me-1"></i>ใบแจ้งหนี้</a></li>
+          <li class="nav-item"><a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
           <li class="nav-item"><a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a></li>
           <li class="nav-item"><a class="nav-link" href="/payments" data-i18n="nav.payments"><i class="bi bi-credit-card me-1"></i>ชำระเงิน</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/announcements"><i class="bi bi-megaphone me-1"></i>ประกาศ</a></li>
         </ul>
         <ul class="navbar-nav ms-auto align-items-center gap-2">
           <li class="nav-item">
@@ -36,6 +39,9 @@
             <button id="themeToggle" class="btn btn-sm btn-outline-secondary" onclick="window.theme && window.theme.toggle()">
               <i class="bi bi-moon-fill"></i>
             </button>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-sm btn-outline-primary" href="/profile"><i class="bi bi-person-circle me-1"></i>โปรไฟล์</a>
           </li>
           <li class="nav-item">
             <a class="btn btn-sm btn-outline-danger" href="/logout"><i class="bi bi-box-arrow-right me-1"></i><span data-i18n="nav.logout">ออกจากระบบ</span></a>

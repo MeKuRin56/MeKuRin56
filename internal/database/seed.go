@@ -118,9 +118,32 @@ func (db *DB) SeedData(cfg *config.Config) error {
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 				`)
 				_, _ = db.Exec(insertPayQuery, tenantID, room101ID, "2026-09", 4500.00, "2026-09-02", "", models.PaymentStatusApproved, "")
-				_, _ = db.Exec(insertPayQuery, tenantID, room101ID, "2026-10", 4500.00, "2026-10-01", "", models.PaymentStatusPending, "")
+				_, _ = db.Exec(insertPayQuery, tenantID, room101ID, "2026-10", 4910.00, "2026-10-01", "", models.PaymentStatusPending, "")
+
+				// Seed sample invoice
+				insertInvQuery := db.Rebind(`
+					INSERT INTO invoices (tenant_id, room_id, billing_month, room_price, water_units, water_rate, water_total, electric_units, electric_rate, electric_total, other_fees, total_amount, due_date, status, notes)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`)
+				_, _ = db.Exec(insertInvQuery, tenantID, room101ID, "2026-10", 4500.00, 5.0, 18.0, 90.0, 40.0, 8.0, 320.0, 0.0, 4910.00, "2026-11-05", "unpaid", "กรุณาชำระเงินก่อนวันที่ 5 ของเดือน")
 			}
 		}
+	}
+
+	// 4. Seed sample announcements if none exist
+	var announcementCount int
+	_ = db.QueryRow("SELECT COUNT(*) FROM announcements").Scan(&announcementCount)
+	if announcementCount == 0 {
+		var isUrgentTrue, isUrgentFalse interface{} = true, false
+		if db.Driver == "sqlite" {
+			isUrgentTrue, isUrgentFalse = 1, 0
+		}
+		insAnnounce := db.Rebind(`
+			INSERT INTO announcements (title, content, is_urgent, created_by)
+			VALUES (?, ?, ?, ?)
+		`)
+		_, _ = db.Exec(insAnnounce, "มาตรการความปลอดภัย: ปิดประตูคีย์การ์ดทุกครั้ง", "เพื่อความปลอดภัยของผู้พักอาศัยทุกคน กรุณาอย่าเปิดประตูค้างไว้ และไม่อนุญาตให้บุคคลภายนอกเข้าโดยไม่มีการแลกบัตร", isUrgentTrue, 1)
+		_, _ = db.Exec(insAnnounce, "แจ้งกำหนดการล้างถังพักน้ำประจำเดือน", "จะมีการล้างถังพักน้ำในวันอาทิตย์ที่ 25 นี้ เวลา 09:00 - 12:00 น. น้ำประปาจะหยุดไหลชั่วคราว กรุณาสำรองน้ำล่วงหน้า", isUrgentFalse, 1)
 	}
 
 	return nil

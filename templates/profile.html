@@ -16,9 +16,21 @@
       <div class="collapse navbar-collapse" id="navbarMain">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           {{if eq .User.Role "admin"}}
-          <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/tenants"><i class="bi bi-people me-1"></i>ผู้เช่า</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/invoices"><i class="bi bi-receipt me-1"></i>ใบแจ้งหนี้</a></li>
+            <li class="nav-item"><a class="nav-link" href="/rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
+            <li class="nav-item"><a class="nav-link" href="/maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a></li>
+            <li class="nav-item"><a class="nav-link" href="/payments"><i class="bi bi-credit-card me-1"></i>ชำระเงิน</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/announcements"><i class="bi bi-megaphone me-1"></i>ประกาศ</a></li>
           {{else}}
-          <li class="nav-item"><a class="nav-link" href="/tenant/dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+            <li class="nav-item"><a class="nav-link" href="/tenant/dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+            <li class="nav-item"><a class="nav-link" href="/tenant/invoices"><i class="bi bi-receipt me-1"></i>ใบแจ้งค่าเช่า</a></li>
+            <li class="nav-item"><a class="nav-link" href="/rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
+            <li class="nav-item"><a class="nav-link" href="/tenant/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a></li>
+            <li class="nav-item"><a class="nav-link" href="/maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a></li>
+            <li class="nav-item"><a class="nav-link" href="/payments"><i class="bi bi-credit-card me-1"></i>ชำระเงิน</a></li>
           {{end}}
           <li class="nav-item"><a class="nav-link active" href="/profile"><i class="bi bi-person-circle me-1"></i>โปรไฟล์</a></li>
         </ul>

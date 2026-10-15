@@ -135,16 +135,18 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "payments.html", gin.H{
-		"Title":        "ระบบชำระค่าเช่า | Payments",
-		"Payments":     payments,
-		"PageInfo":     pageInfo,
-		"StatusFilter": statusFilter,
-		"MonthFilter":  monthFilter,
-		"SearchQuery":  searchQuery,
-		"User":         user,
-		"CSRFToken":    middleware.GetCSRFToken(c),
-		"Success":      c.Query("success"),
-		"Error":        c.Query("error"),
+		"Title":         "ระบบชำระค่าเช่า | Payments",
+		"Payments":      payments,
+		"PageInfo":      pageInfo,
+		"StatusFilter":  statusFilter,
+		"MonthFilter":   monthFilter,
+		"SearchQuery":   searchQuery,
+		"PrefillMonth":  c.Query("month"),
+		"PrefillAmount": c.Query("amount"),
+		"User":          user,
+		"CSRFToken":     middleware.GetCSRFToken(c),
+		"Success":       c.Query("success"),
+		"Error":         c.Query("error"),
 	})
 }
 
@@ -291,6 +293,17 @@ func (h *PaymentHandler) UpdatePaymentStatus(c *gin.Context) {
 	if err != nil {
 		c.Redirect(http.StatusFound, "/payments?error=update_failed")
 		return
+	}
+
+	// Auto-sync invoice status if matching invoice exists
+	var tenantID int64
+	var billingMonth string
+	if err := db.QueryRow(db.Rebind("SELECT tenant_id, billing_month FROM payments WHERE id = ?"), id).Scan(&tenantID, &billingMonth); err == nil {
+		if status == models.PaymentStatusApproved {
+			_, _ = db.Exec(db.Rebind("UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND billing_month = ?"), models.InvoiceStatusPaid, tenantID, billingMonth)
+		} else if status == models.PaymentStatusRejected {
+			_, _ = db.Exec(db.Rebind("UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND billing_month = ? AND status = ?"), models.InvoiceStatusUnpaid, tenantID, billingMonth, models.InvoiceStatusPaid)
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/payments?success=updated")
