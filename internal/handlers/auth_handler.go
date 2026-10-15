@@ -347,3 +347,53 @@ func (h *AuthHandler) GetCurrentUserAPI(c *gin.Context) {
 		},
 	})
 }
+
+// DemoLogin allows one-click demo login for evaluators and testers
+func (h *AuthHandler) DemoLogin(c *gin.Context) {
+	role := c.Query("role")
+	db := database.GetDB()
+
+	var targetEmail string
+	if role == "admin" {
+		targetEmail = h.cfg.AdminEmail
+		if targetEmail == "" {
+			targetEmail = "admin56@gmail.com"
+		}
+	} else {
+		targetEmail = "tenant@dormitory.com"
+	}
+
+	var user models.User
+	var roomID sql.NullInt64
+	var roomNo sql.NullString
+	query := db.Rebind(`
+		SELECT u.id, u.name, u.email, u.role, COALESCE(u.phone, ''), u.room_id, r.room_number, u.created_at, u.updated_at
+		FROM users u
+		LEFT JOIN rooms r ON u.room_id = r.id
+		WHERE LOWER(u.email) = LOWER(?)
+		LIMIT 1
+	`)
+	err := db.QueryRow(query, targetEmail).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Role, &user.Phone, &roomID, &roomNo, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/login?error=demo_not_found")
+		return
+	}
+
+	if roomID.Valid {
+		idVal := roomID.Int64
+		user.RoomID = &idVal
+	}
+	if roomNo.Valid {
+		user.RoomNo = roomNo.String
+	}
+
+	middleware.SetUserSession(c, &user, false)
+
+	if user.Role == models.RoleAdmin {
+		c.Redirect(http.StatusFound, "/admin/dashboard?success=demo_admin")
+	} else {
+		c.Redirect(http.StatusFound, "/tenant/dashboard?success=demo_tenant")
+	}
+}

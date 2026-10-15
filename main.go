@@ -144,6 +144,10 @@ func main() {
 	r.POST("/register", authLimiter.Middleware(), authHandler.HandleRegister)
 	r.GET("/logout", authHandler.HandleLogout)
 	r.GET("/api/me", authHandler.GetCurrentUserAPI)
+	r.GET("/demo-login", authHandler.DemoLogin)
+
+	// ==================== Printable Receipt (Authenticated) ====================
+	r.GET("/invoices/:id/receipt", middleware.AuthRequired(), invoiceHandler.PrintReceipt)
 
 	// ==================== Tenant Protected Routes ====================
 	tenantGroup := r.Group("/tenant")

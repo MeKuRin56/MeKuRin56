@@ -52,6 +52,18 @@
 
         <!-- Right Controls: Theme Switcher & Language Switcher & Auth -->
         <div class="d-flex align-items-center gap-2">
+          <!-- Demo Accounts Quick Pill -->
+          <div class="d-none d-lg-flex align-items-center bg-body-tertiary border rounded-pill px-3 py-1 me-2 small">
+            <span class="text-secondary fw-semibold me-2"><i class="bi bi-flask text-warning me-1"></i>ทดสอบระบบ:</span>
+            <a href="/demo-login?role=tenant" class="text-success text-decoration-none fw-bold me-2" title="เข้าสู่ระบบทันทีในฐานะลูกบ้าน ห้อง 101">
+              <i class="bi bi-person-fill"></i> ลูกบ้าน (101)
+            </a>
+            <span class="text-muted me-2">|</span>
+            <a href="/demo-login?role=admin" class="text-dark text-decoration-none fw-bold" title="เข้าสู่ระบบทันทีในฐานะนิติบุคคล / ผู้ดูแล">
+              <i class="bi bi-shield-lock-fill"></i> นิติบุคคล / ช่าง
+            </a>
+          </div>
+
           <!-- Theme Switcher -->
           <button id="theme-toggle-btn" class="btn btn-sm btn-secondary-custom d-flex align-items-center gap-1" title="สลับโหมดสี">
             <i id="theme-toggle-icon" class="bi bi-moon-stars-fill text-primary"></i>
@@ -90,8 +102,7 @@
               </ul>
             </div>
           {{else}}
-            <a href="/login" class="btn btn-sm btn-secondary-custom" data-i18n="nav.login"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ</a>
-            <a href="/register" class="btn btn-sm btn-primary-custom" data-i18n="nav.register"><i class="bi bi-person-plus me-1"></i>สมัครสมาชิก</a>
+            <a href="/login" class="btn btn-sm btn-success fw-bold px-3" data-i18n="nav.login"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ / สมัครสมาชิก</a>
           {{end}}
         </div>
       </div>
@@ -103,20 +114,31 @@
     <div class="container py-4">
       <div class="row align-items-center g-4">
         <div class="col-lg-7">
-          <span class="badge bg-primary-subtle text-primary mb-3 px-3 py-2 fs-6 rounded-pill">
-            <i class="bi bi-shield-check me-1"></i> Dormitory Management System
+          <span class="badge bg-success-subtle text-success border border-success-subtle mb-3 px-3 py-2 fs-6 rounded-pill">
+            <i class="bi bi-check-circle-fill me-1"></i> Production-ready Go 1.22+ Architecture
           </span>
-          <h1 class="display-5 fw-bold mb-3" data-i18n="app.fullName">ระบบจัดการหอพักที่ทันสมัย ปลอดภัย และใช้งานง่าย</h1>
+          <h1 class="display-5 fw-bold mb-3" data-i18n="app.fullName">ระบบแจ้งซ่อมแซมและจัดการหอพัก/คอนโดมิเนียม</h1>
           <p class="lead text-secondary mb-4" data-i18n="app.tagline">
-            ระบบบริหารจัดการห้องพัก ผู้เช่า แจ้งซ่อม และค่าเช่าแบบครบวงจร รองรับภาษาไทยและภาษาอังกฤษ พร้อมโหมดมืด (Dark Mode)
+            บริหารจัดการงานแจ้งซ่อมสะดวก รวดเร็ว ติดตามสถานะแบบเรียลไทม์ พร้อมระบบแบ่งสิทธิ์แยกลูกบ้าน นิติบุคคล และช่างซ่อมบำรุงอย่างปลอดภัย
           </p>
+
+          <!-- Quick Demo Role Switcher Buttons -->
+          <div class="d-flex flex-wrap gap-3 mb-4">
+            <a href="/demo-login?role=tenant" class="btn btn-success btn-lg px-4 py-3 fw-bold rounded-3 shadow-sm d-inline-flex align-items-center" style="background-color: #198754; border: none;">
+              <i class="bi bi-key-fill me-2 fs-5"></i>ทดลองเข้าใช้งานในฐานะ "ลูกบ้าน" (ห้อง 101)
+            </a>
+            <a href="/demo-login?role=admin" class="btn btn-dark btn-lg px-4 py-3 fw-bold rounded-3 shadow-sm d-inline-flex align-items-center" style="background-color: #212529; border: none;">
+              <i class="bi bi-briefcase-fill me-2 fs-5"></i>ทดลองเข้าใช้งานในฐานะ "นิติบุคคล / ช่าง"
+            </a>
+          </div>
+
           <div class="d-flex flex-wrap gap-3">
-            <a href="/rooms" class="btn btn-primary-custom btn-lg px-4" data-i18n="rooms.title">
+            <a href="/rooms" class="btn btn-outline-primary btn-lg px-4" data-i18n="rooms.title">
               <i class="bi bi-search me-2"></i>ดูห้องพักว่าง
             </a>
             {{if not .User}}
               <a href="/login" class="btn btn-secondary-custom btn-lg px-4" data-i18n="nav.login">
-                <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ
+                <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบทั่วไป
               </a>
             {{else}}
               {{if eq .User.Role "admin"}}

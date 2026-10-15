@@ -367,3 +367,78 @@ func (h *InvoiceHandler) ExportInvoicesCSV(c *gin.Context) {
 		}
 	}
 }
+
+// PrintReceipt renders an official printable A4 receipt for an invoice
+func (h *InvoiceHandler) PrintReceipt(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	idStr := c.Param("id")
+	invoiceID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/invoices")
+		return
+	}
+
+	db := database.GetDB()
+	var inv models.Invoice
+	var tenantID int64
+	var roomID sql.NullInt64
+	var roomNo sql.NullString
+	var notes sql.NullString
+
+	query := db.Rebind(`
+		SELECT i.id, i.tenant_id, u.name, u.email, COALESCE(u.phone, ''),
+		       i.room_id, r.room_number, i.billing_month, i.room_price,
+		       i.water_units, i.water_rate, i.water_total,
+		       i.electric_units, i.electric_rate, i.electric_total,
+		       i.other_fees, i.total_amount, i.due_date, i.status, i.notes,
+		       i.created_at, i.updated_at
+		FROM invoices i
+		JOIN users u ON i.tenant_id = u.id
+		LEFT JOIN rooms r ON i.room_id = r.id
+		WHERE i.id = ?
+	`)
+
+	err = db.QueryRow(query, invoiceID).Scan(
+		&inv.ID, &tenantID, &inv.TenantName, &inv.TenantEmail, &inv.TenantPhone,
+		&roomID, &roomNo, &inv.BillingMonth, &inv.RoomPrice,
+		&inv.WaterUnits, &inv.WaterRate, &inv.WaterTotal,
+		&inv.ElectricUnits, &inv.ElectricRate, &inv.ElectricTotal,
+		&inv.OtherFees, &inv.TotalAmount, &inv.DueDate, &inv.Status, &notes,
+		&inv.CreatedAt, &inv.UpdatedAt,
+	)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/invoices?error=not_found")
+		return
+	}
+
+	// Security check: Tenants can ONLY view receipt of their own invoice
+	if user.Role != models.RoleAdmin && user.ID != tenantID {
+		c.Redirect(http.StatusFound, "/invoices?error=unauthorized")
+		return
+	}
+
+	inv.TenantID = tenantID
+	if roomID.Valid {
+		idVal := roomID.Int64
+		inv.RoomID = &idVal
+	}
+	if roomNo.Valid {
+		inv.RoomNumber = roomNo.String
+	}
+	if notes.Valid {
+		inv.Notes = notes.String
+	}
+
+	c.HTML(http.StatusOK, "receipt.html", gin.H{
+		"Title":       fmt.Sprintf("ใบเสร็จรับเงิน #REC-%05d", inv.ID),
+		"Invoice":     inv,
+		"User":        user,
+		"ReceiptNo":   fmt.Sprintf("REC-%s-%04d", strings.ReplaceAll(inv.BillingMonth, "-", ""), inv.ID),
+		"ReceiptDate": time.Now().Format("02/01/2006"),
+	})
+}

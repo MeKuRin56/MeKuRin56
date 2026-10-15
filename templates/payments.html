@@ -126,6 +126,49 @@
       </div>
     {{end}}
 
+    <!-- Bank Account Information Card for Tenant -->
+    {{if eq .User.Role "tenant"}}
+    <div class="card card-custom mb-4 border-start border-4 border-success shadow-sm">
+      <div class="card-body p-4">
+        <div class="row align-items-center g-3">
+          <div class="col-md-8">
+            <div class="d-flex align-items-center mb-2">
+              <span class="badge bg-success-subtle text-success fs-6 me-2 px-3 py-1 rounded-pill">
+                <i class="bi bi-bank me-1"></i> ช่องทางการชำระเงินค่าเช่า / บัญชีธนาคาร
+              </span>
+              <span class="text-secondary small">หอพักเมฆรินทร์</span>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-sm-6">
+                <div class="p-2 border rounded bg-secondary-subtle">
+                  <div class="text-secondary small"><i class="bi bi-credit-card-2-front me-1 text-success"></i>ธนาคารกสิกรไทย (KBANK)</div>
+                  <div class="fw-bold fs-5 text-primary">123-4-56789-0</div>
+                  <div class="text-secondary small">ชื่อบัญชี: หอพักเมฆรินทร์</div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="p-2 border rounded bg-secondary-subtle">
+                  <div class="text-secondary small"><i class="bi bi-qr-code-scan me-1 text-info"></i>พร้อมเพย์ (PromptPay)</div>
+                  <div class="fw-bold fs-5 text-primary">081-234-5678</div>
+                  <div class="text-secondary small">ชื่อบัญชี: หอพักเมฆรินทร์</div>
+                </div>
+              </div>
+            </div>
+            <div class="small text-muted mt-2">
+              <i class="bi bi-info-circle me-1"></i> โอนเงินเสร็จแล้ว กรุณากดปุ่ม <strong>"แจ้งชำระเงินค่าเช่า"</strong> ด้านบนเพื่อแนบสลิป
+            </div>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="p-2 border rounded bg-white text-dark d-inline-block shadow-sm">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0812345678" alt="PromptPay QR" width="110" height="110" class="img-fluid rounded">
+              <div class="small fw-semibold text-muted mt-1">สแกนชำระผ่าน PromptPay</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+
     <!-- Filters -->
     <div class="card card-custom p-3 mb-4">
       <form action="/payments" method="GET" class="row g-2 align-items-end">
@@ -262,6 +305,10 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+              <div class="p-3 bg-secondary-subtle rounded border mb-3 small">
+                <div class="fw-bold text-success mb-1"><i class="bi bi-bank me-1"></i>บัญชีโอนเงิน: ธ.กสิกรไทย 123-4-56789-0</div>
+                <div class="text-secondary">ชื่อบัญชี: <strong>หอพักเมฆรินทร์</strong> | พร้อมเพย์: <strong>081-234-5678</strong></div>
+              </div>
               <div class="mb-3">
                 <label class="form-label" data-i18n="payments.billingMonth">รอบเดือนที่ชำระ</label>
                 <input type="month" name="billing_month" class="form-control" {{if .PrefillMonth}}value="{{.PrefillMonth}}"{{end}} required>

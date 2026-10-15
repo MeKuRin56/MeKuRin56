@@ -129,7 +129,12 @@ func (db *DB) SeedData(cfg *config.Config) error {
 					INSERT INTO invoices (tenant_id, room_id, billing_month, room_price, water_units, water_rate, water_total, electric_units, electric_rate, electric_total, other_fees, total_amount, due_date, status, notes)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				`)
+				// Paid invoice for 2026-09 (ready for testing A4 printable receipt)
+				_, _ = db.Exec(insertInvQuery, tenantID, room101ID, "2026-09", 4500.00, 4.0, 18.0, 72.0, 35.0, 8.0, 280.0, 0.0, 4852.00, "2026-10-05", "paid", "ชำระเงินเรียบร้อยแล้ว - พิมพ์ใบเสร็จได้")
+				// Unpaid invoice for 2026-10
 				_, _ = db.Exec(insertInvQuery, tenantID, room101ID, "2026-10", 4500.00, 5.0, 18.0, 90.0, 40.0, 8.0, 320.0, 0.0, 4910.00, "2026-11-05", "unpaid", "กรุณาชำระเงินก่อนวันที่ 5 ของเดือน")
+				// Overdue invoice for 2026-08 (ready for testing overdue alert banner)
+				_, _ = db.Exec(insertInvQuery, tenantID, room101ID, "2026-08", 4500.00, 6.0, 18.0, 108.0, 42.0, 8.0, 336.0, 50.0, 4994.00, "2026-09-05", "overdue", "บิลเกินกำหนดชำระ กรุณาติดต่อชำระโดยด่วน")
 			}
 		}
 	}

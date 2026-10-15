@@ -99,13 +99,18 @@
           </div>
           <div class="card-footer bg-transparent border-0 pt-0 pb-3">
             {{if ne .Status "paid"}}
-            <a href="/payments?month={{.BillingMonth}}&amount={{printf "%.2f" .TotalAmount}}" class="btn btn-primary-custom w-100 py-2">
+            <a href="/payments?month={{.BillingMonth}}&amount={{printf "%.2f" .TotalAmount}}" class="btn {{if eq .Status "overdue"}}btn-danger{{else}}btn-primary-custom{{end}} w-100 py-2">
               <i class="bi bi-credit-card me-1"></i> แนบสลิปชำระเงินบิลนี้
             </a>
             {{else}}
-            <button class="btn btn-outline-success w-100" disabled>
-              <i class="bi bi-check-all me-1"></i> ชำระเงินเรียบร้อยแล้ว
-            </button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-success flex-grow-1" disabled>
+                <i class="bi bi-check-all me-1"></i> ชำระเรียบร้อย
+              </button>
+              <a href="/invoices/{{.ID}}/receipt" target="_blank" class="btn btn-success" title="พิมพ์ใบเสร็จรับเงิน">
+                <i class="bi bi-printer me-1"></i> พิมพ์ใบเสร็จ
+              </a>
+            </div>
             {{end}}
           </div>
         </div>

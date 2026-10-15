@@ -139,6 +139,7 @@ type Invoice struct {
 	TenantID      int64     `json:"tenant_id"`
 	TenantName    string    `json:"tenant_name"`
 	TenantEmail   string    `json:"tenant_email"`
+	TenantPhone   string    `json:"tenant_phone"`
 	RoomID        *int64    `json:"room_id"`
 	RoomNumber    string    `json:"room_number"`
 	BillingMonth  string    `json:"billing_month"` // e.g. "2026-10"
