@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการใบแจ้งค่าเช่ารายเดือน | Invoices - Dormitory MS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/"><i class="bi bi-building-check"></i> <span data-i18n="app.name">Dormitory MS</span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"><span class="navbar-toggler-icon"></span></button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/tenants"><i class="bi bi-people me-1"></i>ผู้เช่า</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/admin/invoices"><i class="bi bi-receipt me-1"></i>ใบแจ้งหนี้</a></li>
+          <li class="nav-item"><a class="nav-link" href="/rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a></li>
+          <li class="nav-item"><a class="nav-link" href="/maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a></li>
+          <li class="nav-item"><a class="nav-link" href="/payments"><i class="bi bi-credit-card me-1"></i>ชำระเงิน</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/announcements"><i class="bi bi-megaphone me-1"></i>ประกาศ</a></li>
+        </ul>
+        <ul class="navbar-nav ms-auto align-items-center gap-2">
+          <li class="nav-item"><button id="langToggle" class="btn btn-sm btn-outline-secondary" onclick="window.i18n && window.i18n.toggle()">EN</button></li>
+          <li class="nav-item"><button id="themeToggle" class="btn btn-sm btn-outline-secondary" onclick="window.theme && window.theme.toggle()"><i class="bi bi-moon-fill"></i></button></li>
+          <li class="nav-item"><a class="btn btn-sm btn-outline-primary" href="/profile"><i class="bi bi-person-circle me-1"></i>โปรไฟล์</a></li>
+          <li class="nav-item"><a class="btn btn-sm btn-outline-danger" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-receipt text-primary me-2"></i>จัดการใบแจ้งค่าเช่ารายเดือน</h2>
+        <p class="text-muted mb-0 small">ออกใบแจ้งหนี้ค่าเช่า ค่าน้ำ ค่าไฟ และติดตามสถานะการชำระเงิน</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="/admin/invoices/export" class="btn btn-outline-success">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel (CSV)
+        </a>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#createInvoiceModal">
+          <i class="bi bi-plus-circle me-1"></i> ออกใบแจ้งหนี้ใหม่
+        </button>
+      </div>
+    </div>
+
+    {{if .Success}}
+    <div class="alert alert-success alert-dismissible fade show">
+      <i class="bi bi-check-circle-fill me-2"></i>
+      {{if eq .Success "created"}}ออกใบแจ้งหนี้เรียบร้อยแล้ว ✅{{end}}
+      {{if eq .Success "updated"}}อัปเดตสถานะใบแจ้งหนี้เรียบร้อยแล้ว{{end}}
+      {{if eq .Success "deleted"}}ลบใบแจ้งหนี้เรียบร้อยแล้ว{{end}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {{end}}
+
+    {{if .Error}}
+    <div class="alert alert-danger alert-dismissible fade show">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {{if eq .Error "invoice_already_exists"}}มีใบแจ้งหนี้ของห้อง/ผู้เช่านี้ในเดือนนี้แล้ว{{end}}
+      {{if eq .Error "tenant_has_no_room"}}ผู้เช่านี้ยังไม่มีห้องพัก{{end}}
+      {{if eq .Error "create_failed"}}ไม่สามารถสร้างใบแจ้งหนี้ได้{{end}}
+      {{if eq .Error "update_failed"}}ไม่สามารถอัปเดตได้{{end}}
+      {{if eq .Error "delete_failed"}}ไม่สามารถลบได้{{end}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {{end}}
+
+    <!-- Filter & Search -->
+    <div class="card-custom p-3 mb-4">
+      <form method="GET" action="/admin/invoices" class="row g-2 align-items-center">
+        <div class="col-md-3">
+          <input type="text" name="search" class="form-control form-control-sm" placeholder="ค้นหาชื่อผู้เช่า หรือห้อง..." value="{{.Search}}">
+        </div>
+        <div class="col-md-3">
+          <select name="status" class="form-select form-select-sm">
+            <option value="all" {{if or (eq .StatusFilter "") (eq .StatusFilter "all")}}selected{{end}}>-- ทุกสถานะ --</option>
+            <option value="unpaid" {{if eq .StatusFilter "unpaid"}}selected{{end}}>🔴 ยังไม่ชำระ (Unpaid)</option>
+            <option value="paid" {{if eq .StatusFilter "paid"}}selected{{end}}>🟢 ชำระแล้ว (Paid)</option>
+            <option value="overdue" {{if eq .StatusFilter "overdue"}}selected{{end}}>⚠️ เกินกำหนด (Overdue)</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <input type="month" name="month" class="form-control form-control-sm" value="{{.MonthFilter}}">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary-custom flex-grow-1"><i class="bi bi-search me-1"></i>ค้นหา</button>
+          {{if or .Search .StatusFilter .MonthFilter}}
+            <a href="/admin/invoices" class="btn btn-sm btn-outline-secondary">ล้าง</a>
+          {{end}}
+        </div>
+      </form>
+    </div>
+
+    <!-- Invoices Table -->
+    {{if .Invoices}}
+    <div class="table-responsive card-custom mb-3">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>ห้อง</th>
+            <th>ผู้เช่า</th>
+            <th>ประจำเดือน</th>
+            <th>ค่าห้อง</th>
+            <th>ค่าน้ำ</th>
+            <th>ค่าไฟ</th>
+            <th>ค่าอื่นๆ</th>
+            <th>ยอดรวมสุทธิ</th>
+            <th>ครบกำหนด</th>
+            <th>สถานะ</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Invoices}}
+          <tr>
+            <td>{{.ID}}</td>
+            <td><strong>ห้อง {{.RoomNumber}}</strong></td>
+            <td>
+              <div>{{.TenantName}}</div>
+              <small class="text-muted">{{.TenantEmail}}</small>
+            </td>
+            <td><span class="badge bg-light text-dark border">{{.BillingMonth}}</span></td>
+            <td>฿{{printf "%.0f" .RoomPrice}}</td>
+            <td>
+              <span title="{{.WaterUnits}} หน่วย × ฿{{.WaterRate}}">฿{{printf "%.0f" .WaterTotal}}</span>
+              <div class="small text-muted" style="font-size:0.75rem;">({{.WaterUnits}} น.)</div>
+            </td>
+            <td>
+              <span title="{{.ElectricUnits}} หน่วย × ฿{{.ElectricRate}}">฿{{printf "%.0f" .ElectricTotal}}</span>
+              <div class="small text-muted" style="font-size:0.75rem;">({{.ElectricUnits}} น.)</div>
+            </td>
+            <td>฿{{printf "%.0f" .OtherFees}}</td>
+            <td class="fw-bold text-primary fs-6">฿{{printf "%.2f" .TotalAmount}}</td>
+            <td class="small">{{.DueDate}}</td>
+            <td>
+              {{if eq .Status "paid"}}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>ชำระแล้ว</span>
+              {{else if eq .Status "overdue"}}
+                <span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>เกินกำหนด</span>
+              {{else}}
+                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>ยังไม่ชำระ</span>
+              {{end}}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#statusModal{{.ID}}" title="เปลี่ยนสถานะ">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <form action="/admin/invoices/{{.ID}}/delete" method="POST" onsubmit="return confirm('ยืนยันลบใบแจ้งหนี้นี้?');">
+                  <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบ">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Change Status Modal -->
+          <div class="modal fade" id="statusModal{{.ID}}" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h6 class="modal-title fw-bold">เปลี่ยนสถานะใบแจ้งหนี้ #{{.ID}}</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/admin/invoices/{{.ID}}/status" method="POST">
+                  <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                  <div class="modal-body">
+                    <div class="mb-3">
+                      <label class="form-label small fw-semibold">สถานะ</label>
+                      <select name="status" class="form-select">
+                        <option value="unpaid" {{if eq .Status "unpaid"}}selected{{end}}>🔴 ยังไม่ชำระ</option>
+                        <option value="paid" {{if eq .Status "paid"}}selected{{end}}>🟢 ชำระแล้ว</option>
+                        <option value="overdue" {{if eq .Status "overdue"}}selected{{end}}>⚠️ เกินกำหนด</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-sm btn-primary-custom">บันทึก</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {{if gt .PageInfo.TotalPages 1}}
+    <nav aria-label="Page navigation">
+      <ul class="pagination justify-content-center">
+        <li class="page-item {{if not .PageInfo.HasPrev}}disabled{{end}}">
+          <a class="page-link" href="?page={{.PageInfo.PrevPage}}&status={{.StatusFilter}}&month={{.MonthFilter}}&search={{.Search}}">&laquo; ก่อนหน้า</a>
+        </li>
+        {{range .PageInfo.Pages}}
+        <li class="page-item {{if eq . $.PageInfo.CurrentPage}}active{{end}}">
+          <a class="page-link" href="?page={{.}}&status={{$.StatusFilter}}&month={{$.MonthFilter}}&search={{$.Search}}">{{.}}</a>
+        </li>
+        {{end}}
+        <li class="page-item {{if not .PageInfo.HasNext}}disabled{{end}}">
+          <a class="page-link" href="?page={{.PageInfo.NextPage}}&status={{.StatusFilter}}&month={{.MonthFilter}}&search={{.Search}}">ถัดไป &raquo;</a>
+        </li>
+      </ul>
+    </nav>
+    {{end}}
+
+    {{else}}
+    <div class="text-center py-5 text-muted card-custom">
+      <i class="bi bi-receipt display-4 mb-3 d-block opacity-50"></i>
+      <h5>ยังไม่มีใบแจ้งหนี้</h5>
+      <p>กดปุ่ม "ออกใบแจ้งหนี้ใหม่" ด้านบนเพื่อสร้างใบแจ้งหนี้ค่าเช่าห้องพัก</p>
+    </div>
+    {{end}}
+
+    <!-- Create Invoice Modal -->
+    <div class="modal fade" id="createInvoiceModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle-fill text-primary me-2"></i>ออกใบแจ้งค่าเช่ารายเดือน</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form action="/admin/invoices/new" method="POST">
+            <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">เลือกผู้เช่า (เฉพาะที่มีห้องพัก) <span class="text-danger">*</span></label>
+                  <select name="tenant_id" class="form-select" id="tenantSelect" required>
+                    <option value="">-- เลือกผู้เช่า --</option>
+                    {{range .TenantsWithRooms}}
+                    <option value="{{.ID}}">ห้อง {{.RoomNo}} - {{.Name}} ({{.Email}})</option>
+                    {{end}}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">ประจำเดือน <span class="text-danger">*</span></label>
+                  <input type="month" name="billing_month" class="form-control" required id="billingMonthInput">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">ค่าห้องพัก (บาท)</label>
+                  <input type="number" step="0.01" name="room_price" class="form-control" placeholder="เช่น 3500">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">ค่าน้ำ (จำนวนหน่วย)</label>
+                  <input type="number" step="0.1" name="water_units" class="form-control" placeholder="เช่น 5" value="0">
+                  <small class="text-muted">อัตรา ฿18 / หน่วย</small>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">ค่าไฟ (จำนวนหน่วย)</label>
+                  <input type="number" step="0.1" name="electric_units" class="form-control" placeholder="เช่น 45" value="0">
+                  <small class="text-muted">อัตรา ฿8 / หน่วย</small>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">ค่าบริการอื่นๆ (บาท)</label>
+                  <input type="number" step="0.01" name="other_fees" class="form-control" placeholder="เช่น ค่าขยะ/ส่วนกลาง" value="0">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">กำหนดชำระไม่เกินวันที่</label>
+                  <input type="date" name="due_date" class="form-control" id="dueDateInput">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">หมายเหตุ</label>
+                  <input type="text" name="notes" class="form-control" placeholder="เช่น ชำระภายในวันที่ 5">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary-custom"><i class="bi bi-check-lg me-1"></i> ออกใบแจ้งหนี้</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    // Set default month to current month YYYY-MM
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const monthInput = document.getElementById('billingMonthInput');
+    if (monthInput) monthInput.value = `${year}-${month}`;
+
+    // Set default due date to 5th of next month
+    const dueDateInput = document.getElementById('dueDateInput');
+    if (dueDateInput) {
+      const nextMonth = new Date(year, now.getMonth() + 1, 5);
+      const ny = nextMonth.getFullYear();
+      const nm = String(nextMonth.getMonth() + 1).padStart(2, '0');
+      const nd = String(nextMonth.getDate()).padStart(2, '0');
+      dueDateInput.value = `${ny}-${nm}-${nd}`;
+    }
+  </script>
+</body>
+</html>

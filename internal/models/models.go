@@ -48,6 +48,14 @@ const (
 	BookingStatusCancelled = "cancelled"
 )
 
+// Invoice status constants
+const (
+	InvoiceStatusUnpaid  = "unpaid"
+	InvoiceStatusPending = "pending"
+	InvoiceStatusPaid    = "paid"
+	InvoiceStatusOverdue = "overdue"
+)
+
 type User struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -125,6 +133,53 @@ type RoomBooking struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+type Invoice struct {
+	ID            int64     `json:"id"`
+	TenantID      int64     `json:"tenant_id"`
+	TenantName    string    `json:"tenant_name"`
+	TenantEmail   string    `json:"tenant_email"`
+	RoomID        *int64    `json:"room_id"`
+	RoomNumber    string    `json:"room_number"`
+	BillingMonth  string    `json:"billing_month"` // e.g. "2026-10"
+	RoomPrice     float64   `json:"room_price"`
+	WaterUnits    float64   `json:"water_units"`
+	WaterRate     float64   `json:"water_rate"`
+	WaterTotal    float64   `json:"water_total"`
+	ElectricUnits float64   `json:"electric_units"`
+	ElectricRate  float64   `json:"electric_rate"`
+	ElectricTotal float64   `json:"electric_total"`
+	OtherFees     float64   `json:"other_fees"`
+	TotalAmount   float64   `json:"total_amount"`
+	DueDate       string    `json:"due_date"` // YYYY-MM-DD
+	Status        string    `json:"status"`   // unpaid, pending, paid, overdue
+	Notes         string    `json:"notes"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type Announcement struct {
+	ID         int64     `json:"id"`
+	Title      string    `json:"title"`
+	Content    string    `json:"content"`
+	IsUrgent   bool      `json:"is_urgent"`
+	CreatedBy  *int64    `json:"created_by"`
+	AuthorName string    `json:"author_name"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type PageInfo struct {
+	CurrentPage int   `json:"current_page"`
+	TotalPages  int   `json:"total_pages"`
+	TotalItems  int   `json:"total_items"`
+	Limit       int   `json:"limit"`
+	HasPrev     bool  `json:"has_prev"`
+	HasNext     bool  `json:"has_next"`
+	PrevPage    int   `json:"prev_page"`
+	NextPage    int   `json:"next_page"`
+	Pages       []int `json:"pages"`
+}
+
 type DashboardStats struct {
 	TotalRooms      int     `json:"total_rooms"`
 	VacantRooms     int     `json:"vacant_rooms"`
@@ -134,5 +189,6 @@ type DashboardStats struct {
 	PendingRequests int     `json:"pending_requests"`
 	PendingPayments int     `json:"pending_payments"`
 	PendingBookings int     `json:"pending_bookings"`
+	UnpaidInvoices  int     `json:"unpaid_invoices"`
 	MonthlyRevenue  float64 `json:"monthly_revenue"`
 }

@@ -75,10 +75,27 @@ func (h *MaintenanceHandler) ListMaintenance(c *gin.Context) {
 		baseSQL += " AND " + strings.Join(conditions, " AND ")
 	}
 
-	baseSQL += " ORDER BY m.created_at DESC"
+	countSQL := `
+		SELECT COUNT(*)
+		FROM maintenance_requests m
+		JOIN users u ON m.tenant_id = u.id
+		LEFT JOIN rooms r ON m.room_id = r.id
+		WHERE 1=1
+	`
+	if len(conditions) > 0 {
+		countSQL += " AND " + strings.Join(conditions, " AND ")
+	}
+
+	var totalItems int
+	_ = db.QueryRow(db.Rebind(countSQL), args...).Scan(&totalItems)
+
+	_, limit, offset, pageInfo := GetPagination(c, totalItems, 10)
+
+	baseSQL += " ORDER BY m.created_at DESC LIMIT ? OFFSET ?"
+	queryArgs := append(args, limit, offset)
 
 	reboundSQL := db.Rebind(baseSQL)
-	rows, err := db.Query(reboundSQL, args...)
+	rows, err := db.Query(reboundSQL, queryArgs...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load requests"})
 		return
@@ -115,6 +132,7 @@ func (h *MaintenanceHandler) ListMaintenance(c *gin.Context) {
 	c.HTML(http.StatusOK, "maintenance.html", gin.H{
 		"Title":          "ระบบแจ้งซ่อม | Maintenance",
 		"Requests":       requests,
+		"PageInfo":       pageInfo,
 		"StatusFilter":   statusFilter,
 		"CategoryFilter": categoryFilter,
 		"SearchQuery":    searchQuery,

@@ -106,15 +106,65 @@ func (h *TenantHandler) ShowTenantDashboard(c *gin.Context) {
 		}
 	}
 
+	// 4. If tenant has no room, check for a pending booking request
+	var pendingBooking *models.RoomBooking
+	if user.RoomID == nil {
+		bq := db.Rebind(`
+			SELECT b.id, b.room_id, r.room_number, r.room_type, r.price,
+			       b.tenant_id, ?, ?, ?,
+			       b.status, COALESCE(b.message,''), COALESCE(b.admin_note,''),
+			       b.created_at, b.updated_at
+			FROM room_bookings b
+			JOIN rooms r ON b.room_id = r.id
+			WHERE b.tenant_id = ? AND b.status = 'pending'
+			ORDER BY b.created_at DESC
+			LIMIT 1
+		`)
+		var pb models.RoomBooking
+		err := db.QueryRow(bq, user.Name, user.Email, user.Phone, user.ID).Scan(
+			&pb.ID, &pb.RoomID, &pb.RoomNumber, &pb.RoomType, &pb.Price,
+			&pb.TenantID, &pb.TenantName, &pb.TenantEmail, &pb.TenantPhone,
+			&pb.Status, &pb.Message, &pb.AdminNote,
+			&pb.CreatedAt, &pb.UpdatedAt,
+		)
+		if err == nil {
+			pendingBooking = &pb
+		}
+	}
+
+	// 5. Fetch tenant's recent invoices
+	invRows, _ := db.Query(db.Rebind(`
+		SELECT id, billing_month, room_price, water_total, electric_total, other_fees, total_amount, due_date, status
+		FROM invoices
+		WHERE tenant_id = ?
+		ORDER BY created_at DESC
+		LIMIT 5
+	`), user.ID)
+	var invoices []models.Invoice
+	if invRows != nil {
+		defer invRows.Close()
+		for invRows.Next() {
+			var inv models.Invoice
+			if err := invRows.Scan(&inv.ID, &inv.BillingMonth, &inv.RoomPrice, &inv.WaterTotal, &inv.ElectricTotal, &inv.OtherFees, &inv.TotalAmount, &inv.DueDate, &inv.Status); err == nil {
+				invoices = append(invoices, inv)
+			}
+		}
+	}
+
+	announcements := FetchActiveAnnouncements(3)
+
 	c.HTML(http.StatusOK, "dashboard_tenant.html", gin.H{
-		"Title":     "แดชบอร์ดผู้เช่า | Tenant Dashboard",
-		"User":      user,
-		"Room":      room,
-		"Requests":  requests,
-		"Payments":  payments,
-		"CSRFToken": middleware.GetCSRFToken(c),
-		"Success":   c.Query("success"),
-		"Error":     c.Query("error"),
+		"Title":          "แดชบอร์ดผู้เช่า | Tenant Dashboard",
+		"User":           user,
+		"Room":           room,
+		"Requests":       requests,
+		"Payments":       payments,
+		"Invoices":       invoices,
+		"Announcements":  announcements,
+		"PendingBooking": pendingBooking,
+		"CSRFToken":      middleware.GetCSRFToken(c),
+		"Success":        c.Query("success"),
+		"Error":          c.Query("error"),
 	})
 }
 

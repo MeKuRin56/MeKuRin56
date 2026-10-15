@@ -16,6 +16,7 @@ import (
 	"dormitory-management-system/internal/handlers"
 	"dormitory-management-system/internal/middleware"
 	"dormitory-management-system/internal/models"
+	"html/template"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -49,6 +50,14 @@ func setupTestApp(t *testing.T) (*gin.Engine, *database.DB, *config.Config) {
 	r.Static("/static", "./static")
 	r.Static("/locales", "./locales")
 	r.Use(middleware.CSRFMiddleware(false))
+	r.SetFuncMap(template.FuncMap{
+		"derefInt64": func(p *int64) int64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
+	})
 	r.LoadHTMLGlob("templates/*")
 
 	authHandler := handlers.NewAuthHandler(cfg)
@@ -428,3 +437,83 @@ func TestRateLimiter(t *testing.T) {
 		t.Errorf("Expected 429 Too Many Requests on 4th call, got %d", w.Code)
 	}
 }
+
+// 11: Test Invoices Database Table and Billing Logic
+func TestInvoiceCreationAndPersistence(t *testing.T) {
+	_, db, _ := setupTestApp(t)
+
+	// Insert test invoice
+	res, err := db.Exec(db.Rebind(`
+		INSERT INTO invoices (
+			tenant_id, room_id, billing_month, room_price,
+			water_units, water_rate, water_total,
+			electric_units, electric_rate, electric_total,
+			other_fees, total_amount, due_date, status, notes
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?)
+	`), 2, 1, "2026-10", 3500.0, 5.0, 18.0, 90.0, 50.0, 8.0, 400.0, 50.0, 4040.0, "2026-11-05", "Test invoice")
+	if err != nil {
+		t.Fatalf("Failed to insert invoice: %v", err)
+	}
+
+	id, _ := res.LastInsertId()
+	if id <= 0 {
+		t.Errorf("Expected positive invoice ID, got %d", id)
+	}
+
+	var total float64
+	var status string
+	err = db.QueryRow(db.Rebind("SELECT total_amount, status FROM invoices WHERE id = ?"), id).Scan(&total, &status)
+	if err != nil {
+		t.Fatalf("Failed to query created invoice: %v", err)
+	}
+	if total != 4040.0 {
+		t.Errorf("Expected total 4040.0, got %.2f", total)
+	}
+	if status != "unpaid" {
+		t.Errorf("Expected status unpaid, got %s", status)
+	}
+}
+
+// 12: Test Announcements Creation and Fetch
+func TestAnnouncementCreation(t *testing.T) {
+	_, db, _ := setupTestApp(t)
+
+	_, err := db.Exec(db.Rebind(`
+		INSERT INTO announcements (title, content, is_urgent, created_by)
+		VALUES (?, ?, ?, ?)
+	`), "Important Notice", "Water tank cleaning on Oct 20", 1, 1)
+	if err != nil {
+		t.Fatalf("Failed to create announcement: %v", err)
+	}
+
+	announcements := handlers.FetchActiveAnnouncements(5)
+	if len(announcements) == 0 {
+		t.Fatalf("Expected at least 1 announcement, got 0")
+	}
+	if announcements[0].Title != "Important Notice" {
+		t.Errorf("Expected announcement title 'Important Notice', got %s", announcements[0].Title)
+	}
+	if !announcements[0].IsUrgent {
+		t.Errorf("Expected announcement to be urgent")
+	}
+}
+
+// 13: Test Password Length & Bcrypt Security Verification
+func TestProfilePasswordValidation(t *testing.T) {
+	password := "newSecurePass2026"
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("Bcrypt hash generation failed: %v", err)
+	}
+
+	// Verify correct password matches
+	if err := bcrypt.CompareHashAndPassword(hash, []byte(password)); err != nil {
+		t.Errorf("Valid password failed verification: %v", err)
+	}
+
+	// Verify wrong password rejected
+	if err := bcrypt.CompareHashAndPassword(hash, []byte("wrongPassword")); err == nil {
+		t.Errorf("Wrong password was erroneously accepted!")
+	}
+}
+

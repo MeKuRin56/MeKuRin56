@@ -79,6 +79,8 @@ func main() {
 	tenantHandler := handlers.NewTenantHandler(cfg)
 	bookingHandler := handlers.NewBookingHandler(cfg)
 	profileHandler := handlers.NewProfileHandler(cfg)
+	invoiceHandler := handlers.NewInvoiceHandler(cfg)
+	announcementHandler := handlers.NewAnnouncementHandler(cfg)
 
 	// ==================== Public & Home Routes ====================
 	r.GET("/", func(c *gin.Context) {
@@ -90,10 +92,13 @@ func main() {
 		_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM rooms WHERE status = ?"), models.RoomStatusOccupied).Scan(&stats.OccupiedRooms)
 		_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM rooms WHERE status = ?"), models.RoomStatusMaintenance).Scan(&stats.MaintenanceRooms)
 
+		announcements := handlers.FetchActiveAnnouncements(3)
+
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"Title": "ระบบจัดการหอพัก | Dormitory MS",
-			"User":  currentUser,
-			"Stats": stats,
+			"Title":         "ระบบจัดการหอพัก | Dormitory MS",
+			"User":          currentUser,
+			"Stats":         stats,
+			"Announcements": announcements,
 		})
 	})
 
@@ -116,6 +121,7 @@ func main() {
 		tenantGroup.POST("/release-room", tenantHandler.ReleaseRoom)
 		tenantGroup.GET("/bookings", bookingHandler.ShowMyBookings)
 		tenantGroup.POST("/bookings/:id/cancel", bookingHandler.CancelBooking)
+		tenantGroup.GET("/invoices", invoiceHandler.ListInvoices)
 	}
 
 	// Profile (all logged-in users)
@@ -161,6 +167,15 @@ func main() {
 		adminGroup.POST("/bookings/:id/reject", bookingHandler.RejectBooking)
 		adminGroup.GET("/tenants", adminHandler.ShowTenants)
 		adminGroup.POST("/tenants/:id/delete", adminHandler.DeleteTenant)
+		adminGroup.GET("/invoices", invoiceHandler.ListInvoices)
+		adminGroup.POST("/invoices/new", invoiceHandler.CreateInvoice)
+		adminGroup.POST("/invoices/:id/status", invoiceHandler.UpdateInvoiceStatus)
+		adminGroup.POST("/invoices/:id/delete", invoiceHandler.DeleteInvoice)
+		adminGroup.GET("/invoices/export", invoiceHandler.ExportInvoicesCSV)
+		adminGroup.GET("/payments/export", paymentHandler.ExportPaymentsCSV)
+		adminGroup.GET("/announcements", announcementHandler.ListAnnouncements)
+		adminGroup.POST("/announcements/new", announcementHandler.CreateAnnouncement)
+		adminGroup.POST("/announcements/:id/delete", announcementHandler.DeleteAnnouncement)
 	}
 
 	// Admin Room Management

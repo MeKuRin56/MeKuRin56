@@ -39,6 +39,7 @@ func (h *AdminHandler) ShowAdminDashboard(c *gin.Context) {
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM maintenance_requests WHERE status = ?"), models.MaintStatusPending).Scan(&stats.PendingRequests)
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM payments WHERE status = ?"), models.PaymentStatusPending).Scan(&stats.PendingPayments)
 	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM room_bookings WHERE status = ?"), models.BookingStatusPending).Scan(&stats.PendingBookings)
+	_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM invoices WHERE status = ?"), models.InvoiceStatusUnpaid).Scan(&stats.UnpaidInvoices)
 
 	currentMonth := time.Now().Format("2006-01")
 	var monthlyRev sql.NullFloat64
@@ -141,6 +142,8 @@ func (h *AdminHandler) ShowAdminDashboard(c *gin.Context) {
 		}
 	}
 
+	announcements := FetchActiveAnnouncements(5)
+
 	c.HTML(http.StatusOK, "dashboard_admin.html", gin.H{
 		"Title":          "ผู้ดูแลระบบ | Admin Dashboard",
 		"Stats":          stats,
@@ -148,6 +151,7 @@ func (h *AdminHandler) ShowAdminDashboard(c *gin.Context) {
 		"RecentPayments": recentPayments,
 		"Tenants":        tenants,
 		"Rooms":          allRooms,
+		"Announcements":  announcements,
 		"User":           currentUser,
 		"CSRFToken":      middleware.GetCSRFToken(c),
 		"Success":        c.Query("success"),

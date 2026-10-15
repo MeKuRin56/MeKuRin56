@@ -80,10 +80,27 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 		baseSQL += " AND " + strings.Join(conditions, " AND ")
 	}
 
-	baseSQL += " ORDER BY p.created_at DESC"
+	countSQL := `
+		SELECT COUNT(*)
+		FROM payments p
+		JOIN users u ON p.tenant_id = u.id
+		LEFT JOIN rooms r ON p.room_id = r.id
+		WHERE 1=1
+	`
+	if len(conditions) > 0 {
+		countSQL += " AND " + strings.Join(conditions, " AND ")
+	}
+
+	var totalItems int
+	_ = db.QueryRow(db.Rebind(countSQL), args...).Scan(&totalItems)
+
+	_, limit, offset, pageInfo := GetPagination(c, totalItems, 10)
+
+	baseSQL += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+	queryArgs := append(args, limit, offset)
 
 	reboundSQL := db.Rebind(baseSQL)
-	rows, err := db.Query(reboundSQL, args...)
+	rows, err := db.Query(reboundSQL, queryArgs...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load payments"})
 		return
@@ -120,6 +137,7 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	c.HTML(http.StatusOK, "payments.html", gin.H{
 		"Title":        "ระบบชำระค่าเช่า | Payments",
 		"Payments":     payments,
+		"PageInfo":     pageInfo,
 		"StatusFilter": statusFilter,
 		"MonthFilter":  monthFilter,
 		"SearchQuery":  searchQuery,
@@ -277,3 +295,49 @@ func (h *PaymentHandler) UpdatePaymentStatus(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, "/payments?success=updated")
 }
+
+// ExportPaymentsCSV exports all payments as CSV with UTF-8 BOM for Excel
+func (h *PaymentHandler) ExportPaymentsCSV(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil || user.Role != models.RoleAdmin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	db := database.GetDB()
+	rows, err := db.Query(`
+		SELECT p.id, u.name, COALESCE(r.room_number, '-'), p.billing_month,
+		       p.amount, p.payment_date, p.status, COALESCE(p.rejection_reason, ''), p.created_at
+		FROM payments p
+		JOIN users u ON p.tenant_id = u.id
+		LEFT JOIN rooms r ON p.room_id = r.id
+		ORDER BY p.created_at DESC
+	`)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Export failed")
+		return
+	}
+	defer rows.Close()
+
+	filename := fmt.Sprintf("payments_%s.csv", time.Now().Format("20060102_150405"))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+
+	// UTF-8 BOM
+	c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+	c.Writer.WriteString("Payment ID,ผู้เช่า,หมายเลขห้อง,ประจำเดือน,จำนวนเงิน (บาท),วันที่ชำระ,สถานะ,เหตุผลปฏิเสธ(ถ้ามี),บันทึกเมื่อ\n")
+
+	for rows.Next() {
+		var id int64
+		var name, roomNo, month, payDate, status, reason string
+		var amount float64
+		var createdAt time.Time
+		if err := rows.Scan(&id, &name, &roomNo, &month, &amount, &payDate, &status, &reason, &createdAt); err == nil {
+			line := fmt.Sprintf("%d,\"%s\",\"%s\",\"%s\",%.2f,\"%s\",\"%s\",\"%s\",\"%s\"\n",
+				id, name, roomNo, month, amount, payDate, status, reason, createdAt.Format("2006-01-02 15:04"),
+			)
+			c.Writer.WriteString(line)
+		}
+	}
+}
+

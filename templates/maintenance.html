@@ -74,6 +74,8 @@
                 <span class="d-none d-md-inline">{{.User.Name}}</span>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person-circle me-2"></i>โปรไฟล์</a></li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="/logout" data-i18n="nav.logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
               </ul>
             </div>
@@ -235,6 +237,25 @@
         </table>
       </div>
     </div>
+
+    <!-- Pagination -->
+    {{if and .PageInfo (gt .PageInfo.TotalPages 1)}}
+    <nav aria-label="Page navigation" class="mt-4">
+      <ul class="pagination justify-content-center">
+        <li class="page-item {{if not .PageInfo.HasPrev}}disabled{{end}}">
+          <a class="page-link" href="?page={{.PageInfo.PrevPage}}&status={{.StatusFilter}}&category={{.CategoryFilter}}&search={{.SearchQuery}}">&laquo; ก่อนหน้า</a>
+        </li>
+        {{range .PageInfo.Pages}}
+        <li class="page-item {{if eq . $.PageInfo.CurrentPage}}active{{end}}">
+          <a class="page-link" href="?page={{.}}&status={{$.StatusFilter}}&category={{$.CategoryFilter}}&search={{$.SearchQuery}}">{{.}}</a>
+        </li>
+        {{end}}
+        <li class="page-item {{if not .PageInfo.HasNext}}disabled{{end}}">
+          <a class="page-link" href="?page={{.PageInfo.NextPage}}&status={{.StatusFilter}}&category={{.CategoryFilter}}&search={{.SearchQuery}}">ถัดไป &raquo;</a>
+        </li>
+      </ul>
+    </nav>
+    {{end}}
   </main>
 
   <!-- Modal 1: New Maintenance Request (Tenant) -->

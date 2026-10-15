@@ -30,7 +30,13 @@
             <a class="nav-link active" href="/tenant/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="/tenant/invoices"><i class="bi bi-receipt me-1"></i>ใบแจ้งค่าเช่า</a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/tenant/bookings"><i class="bi bi-calendar-check me-1"></i>คำขอจอง</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a>
@@ -67,6 +73,8 @@
               <span class="badge bg-light text-dark ms-1">Tenant</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person-circle me-2"></i>โปรไฟล์ของฉัน</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="/logout" data-i18n="nav.logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
             </ul>
           </div>
@@ -107,6 +115,27 @@
         <div data-i18n="common.error">เกิดข้อผิดพลาดในการทำรายการ</div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
+    {{end}}
+
+    {{if .Announcements}}
+    <!-- Announcements Alert -->
+    <div class="mb-4">
+      {{range .Announcements}}
+      <div class="alert {{if .IsUrgent}}alert-danger border-2 shadow-sm{{else}}alert-primary{{end}} d-flex align-items-start gap-3 mb-2" role="alert">
+        <i class="bi {{if .IsUrgent}}bi-exclamation-triangle-fill text-danger{{else}}bi-megaphone-fill text-primary{{end}} fs-4 mt-1"></i>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2">
+            <strong class="fs-6">{{.Title}}</strong>
+            {{if .IsUrgent}}<span class="badge bg-danger">ประกาศด่วน</span>{{end}}
+          </div>
+          <div class="small mt-1" style="white-space: pre-wrap;">{{.Content}}</div>
+          <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+            ประกาศเมื่อ {{.CreatedAt.Format "02/01/2006 15:04 น."}} &bull; โดย {{.AuthorName}}
+          </div>
+        </div>
+      </div>
+      {{end}}
+    </div>
     {{end}}
 
     <!-- Room Information Card -->
@@ -159,6 +188,37 @@
           </div>
         </div>
       {{else}}
+        {{if .PendingBooking}}
+        <!-- Has pending booking request -->
+        <div class="alert alert-warning mb-0">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+              <div class="d-flex align-items-center mb-1">
+                <i class="bi bi-hourglass-split me-2 fs-5"></i>
+                <strong>คำขอจองของคุณกำลังรอการอนุมัติจาก Admin</strong>
+              </div>
+              <div class="small text-muted">
+                ห้อง <strong>{{.PendingBooking.RoomNumber}}</strong> ({{.PendingBooking.RoomType}}) —
+                ฿{{printf "%.0f" .PendingBooking.Price}}/เดือน —
+                ส่งคำขอเมื่อ {{.PendingBooking.CreatedAt.Format "02/01/2006 15:04 น."}}
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <a href="/tenant/bookings" class="btn btn-warning btn-sm">
+                <i class="bi bi-eye me-1"></i>ดูสถานะคำขอ
+              </a>
+              <form action="/tenant/bookings/{{.PendingBooking.ID}}/cancel" method="POST"
+                    onsubmit="return confirm('ยืนยันยกเลิกคำขอจองห้อง {{.PendingBooking.RoomNumber}}?');">
+                <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="bi bi-x me-1"></i>ยกเลิกคำขอ
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {{else}}
+        <!-- No room, no pending booking -->
         <div class="alert alert-info mb-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div class="d-flex align-items-center">
             <i class="bi bi-info-circle-fill me-2 fs-5"></i>
@@ -168,8 +228,68 @@
             <i class="bi bi-door-open me-1"></i> <span data-i18n="rooms.goToRent">ไปเลือกดูและเช่าห้องพัก</span>
           </a>
         </div>
+        {{end}}
       {{end}}
     </div>
+
+    <!-- Monthly Invoices Summary -->
+    {{if .Invoices}}
+    <div class="card card-custom p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">
+          <i class="bi bi-receipt text-primary me-2"></i>
+          <span>ใบแจ้งค่าเช่ารายเดือน</span>
+        </h5>
+        <a href="/tenant/invoices" class="btn btn-sm btn-outline-primary">ดูใบแจ้งหนี้ทั้งหมด &raquo;</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ประจำเดือน</th>
+              <th>ค่าห้อง</th>
+              <th>ค่าน้ำ</th>
+              <th>ค่าไฟ</th>
+              <th>ยอดรวมสุทธิ</th>
+              <th>กำหนดชำระ</th>
+              <th>สถานะ</th>
+              <th>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Invoices}}
+            <tr>
+              <td><strong>{{.BillingMonth}}</strong></td>
+              <td>฿{{printf "%.0f" .RoomPrice}}</td>
+              <td>฿{{printf "%.0f" .WaterTotal}}</td>
+              <td>฿{{printf "%.0f" .ElectricTotal}}</td>
+              <td class="fw-bold text-primary">฿{{printf "%.2f" .TotalAmount}}</td>
+              <td class="small">{{.DueDate}}</td>
+              <td>
+                {{if eq .Status "paid"}}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>ชำระแล้ว</span>
+                {{else if eq .Status "overdue"}}
+                  <span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>เกินกำหนด</span>
+                {{else}}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>รอชำระ</span>
+                {{end}}
+              </td>
+              <td>
+                {{if ne .Status "paid"}}
+                <a href="/payments?month={{.BillingMonth}}&amount={{printf "%.2f" .TotalAmount}}" class="btn btn-sm btn-primary-custom">
+                  <i class="bi bi-credit-card me-1"></i>แนบสลิป
+                </a>
+                {{else}}
+                <span class="text-muted small"><i class="bi bi-check-all text-success me-1"></i>เรียบร้อย</span>
+                {{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
 
     <!-- Personal Maintenance and Payments History -->
     <div class="row g-4">

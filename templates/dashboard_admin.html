@@ -106,6 +106,33 @@
       </div>
     {{end}}
 
+    {{if .Announcements}}
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold text-muted text-uppercase mb-0"><i class="bi bi-megaphone me-1"></i>ประกาศและข่าวสารล่าสุด</h6>
+        <a href="/admin/announcements" class="small text-primary text-decoration-none">จัดการประกาศ &raquo;</a>
+      </div>
+      <div class="row g-2">
+        {{range .Announcements}}
+        <div class="col-md-6 col-lg-4">
+          <div class="card-custom p-3 h-100 {{if .IsUrgent}}border-danger border-2{{end}}">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              {{if .IsUrgent}}
+                <span class="badge bg-danger small"><i class="bi bi-exclamation-triangle-fill me-1"></i>ด่วน</span>
+              {{else}}
+                <span class="badge bg-primary small">ทั่วไป</span>
+              {{end}}
+              <strong class="text-truncate">{{.Title}}</strong>
+            </div>
+            <p class="small text-muted mb-1 text-truncate" style="max-height: 2.4em;">{{.Content}}</p>
+            <div class="small text-muted" style="font-size:0.75rem;">{{.CreatedAt.Format "02/01/2006 15:04"}}</div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
     <!-- Statistics Grid (8 Metrics) -->
     <div class="row g-3 mb-4">
       <!-- Total Rooms -->
@@ -168,36 +195,58 @@
           </div>
         </div>
       </div>
-      <!-- Pending Requests -->
+      <!-- Pending Requests — clickable -->
       <div class="col-6 col-lg-3">
-        <div class="stat-card">
-          <div class="stat-icon bg-danger-subtle text-danger">
-            <i class="bi bi-exclamation-octagon"></i>
+        <a href="/maintenance?status=pending" class="text-decoration-none">
+          <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-octagon"></i></div>
+            <div>
+              <div class="stat-val text-danger">{{.Stats.PendingRequests}}</div>
+              <div class="stat-label" data-i18n="dashboard.pendingRequests">แจ้งซ่อมรอดำเนินการ</div>
+            </div>
           </div>
-          <div>
-            <div class="stat-val text-danger">{{.Stats.PendingRequests}}</div>
-            <div class="stat-label" data-i18n="dashboard.pendingRequests">แจ้งซ่อมรอดำเนินการ</div>
-          </div>
-        </div>
+        </a>
       </div>
-      <!-- Pending Payments -->
+      <!-- Pending Payments — clickable -->
       <div class="col-6 col-lg-3">
-        <div class="stat-card">
-          <div class="stat-icon bg-warning-subtle text-warning">
-            <i class="bi bi-hourglass-split"></i>
+        <a href="/payments?status=pending" class="text-decoration-none">
+          <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+              <div class="stat-val text-warning">{{.Stats.PendingPayments}}</div>
+              <div class="stat-label" data-i18n="dashboard.pendingPayments">ชำระเงินรอตรวจสอบ</div>
+            </div>
           </div>
-          <div>
-            <div class="stat-val text-warning">{{.Stats.PendingPayments}}</div>
-            <div class="stat-label" data-i18n="dashboard.pendingPayments">ชำระเงินรอตรวจสอบ</div>
+        </a>
+      </div>
+      <!-- Pending Bookings — clickable -->
+      <div class="col-6 col-lg-3">
+        <a href="/admin/bookings?status=pending" class="text-decoration-none">
+          <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-calendar-check"></i></div>
+            <div>
+              <div class="stat-val text-primary">{{.Stats.PendingBookings}}</div>
+              <div class="stat-label">คำขอจองรออนุมัติ</div>
+            </div>
           </div>
-        </div>
+        </a>
+      </div>
+      <!-- Unpaid Invoices — clickable -->
+      <div class="col-6 col-lg-3">
+        <a href="/admin/invoices?status=unpaid" class="text-decoration-none">
+          <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-receipt"></i></div>
+            <div>
+              <div class="stat-val text-danger">{{.Stats.UnpaidInvoices}}</div>
+              <div class="stat-label">ใบแจ้งหนี้ค้างชำระ</div>
+            </div>
+          </div>
+        </a>
       </div>
       <!-- Monthly Revenue -->
       <div class="col-6 col-lg-3">
         <div class="stat-card">
-          <div class="stat-icon bg-success-subtle text-success">
-            <i class="bi bi-cash-stack"></i>
-          </div>
+          <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-cash-stack"></i></div>
           <div>
             <div class="stat-val text-success">{{printf "%.0f" .Stats.MonthlyRevenue}}</div>
             <div class="stat-label" data-i18n="dashboard.monthlyRevenue">รายได้เดือนนี้ (บาท)</div>
