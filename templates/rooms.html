@@ -170,24 +170,59 @@
                   </div>
                 {{end}}
 
-                {{if $.User}}
-                  {{if eq $.User.Role "admin"}}
-                    <div class="d-flex gap-2 pt-2 border-top">
-                      <button class="btn btn-sm btn-secondary-custom flex-grow-1" data-bs-toggle="modal" data-bs-target="#editRoomModal"
-                              data-id="{{.ID}}" data-number="{{.RoomNumber}}" data-type="{{.RoomType}}"
-                              data-price="{{.Price}}" data-floor="{{.Floor}}" data-status="{{.Status}}" data-desc="{{.Description}}">
-                        <i class="bi bi-pencil me-1"></i> <span data-i18n="common.edit">แก้ไข</span>
-                      </button>
-
-                      <form action="/rooms/{{.ID}}/delete" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบห้องพักนี้?');">
-                        <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบห้องพัก">
-                          <i class="bi bi-trash"></i>
+                <div class="pt-2 border-top mt-auto">
+                  {{if $.User}}
+                    {{if eq $.User.Role "admin"}}
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-secondary-custom flex-grow-1" data-bs-toggle="modal" data-bs-target="#editRoomModal"
+                                data-id="{{.ID}}" data-number="{{.RoomNumber}}" data-type="{{.RoomType}}"
+                                data-price="{{.Price}}" data-floor="{{.Floor}}" data-status="{{.Status}}" data-desc="{{.Description}}">
+                          <i class="bi bi-pencil me-1"></i> <span data-i18n="common.edit">แก้ไข</span>
                         </button>
-                      </form>
-                    </div>
+
+                        <form action="/rooms/{{.ID}}/delete" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบห้องพักนี้?');">
+                          <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบห้องพัก">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                      </div>
+                    {{else}}
+                      <!-- Tenant View -->
+                      {{if and $.User.RoomID (eq *$.User.RoomID .ID)}}
+                        <div class="p-2 rounded bg-success-subtle text-success text-center fw-semibold small">
+                          <i class="bi bi-check-circle-fill me-1"></i> <span data-i18n="rooms.myCurrentRoom">ห้องที่คุณกำลังเช่าอยู่</span>
+                        </div>
+                      {{else if eq .Status "vacant"}}
+                        <form action="/rooms/{{.ID}}/rent" method="POST">
+                          <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                          <button type="submit" class="btn btn-sm btn-primary-custom w-100 py-2 fw-semibold" onclick="return confirm('ยืนยันการเช่าห้องพักหมายเลข {{.RoomNumber}} ใช่หรือไม่?');">
+                            <i class="bi bi-key-fill me-1"></i> <span data-i18n="rooms.bookRoom">เช่าห้องนี้</span>
+                          </button>
+                        </form>
+                      {{else if eq .Status "occupied"}}
+                        <button class="btn btn-sm btn-secondary-custom w-100" disabled>
+                          <i class="bi bi-person-fill-lock me-1"></i> <span data-i18n="status.occupied">มีผู้เช่าแล้ว</span>
+                        </button>
+                      {{else}}
+                        <button class="btn btn-sm btn-secondary-custom w-100" disabled>
+                          <i class="bi bi-tools me-1"></i> <span data-i18n="status.maintenance">กำลังซ่อมแซม</span>
+                        </button>
+                      {{end}}
+                    {{end}}
+                  {{else}}
+                    <!-- Guest View -->
+                    {{if eq .Status "vacant"}}
+                      <a href="/login?next=/rooms" class="btn btn-sm btn-primary-custom w-100 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> <span data-i18n="rooms.loginToBook">เข้าสู่ระบบเพื่อเช่าห้อง</span>
+                      </a>
+                    {{else}}
+                      <button class="btn btn-sm btn-secondary-custom w-100" disabled>
+                        <i class="bi bi-lock me-1"></i> <span data-i18n="status.{{.Status}}">{{.Status}}</span>
+                      </button>
+                    {{end}}
                   {{end}}
-                {{end}}
+                </div>
 
               </div>
             </div>

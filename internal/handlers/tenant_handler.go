@@ -117,3 +117,20 @@ func (h *TenantHandler) ShowTenantDashboard(c *gin.Context) {
 		"Error":     c.Query("error"),
 	})
 }
+
+// ReleaseRoom allows a tenant to vacate/cancel their current room assignment
+func (h *TenantHandler) ReleaseRoom(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil || user.RoomID == nil {
+		c.Redirect(http.StatusFound, "/tenant/dashboard")
+		return
+	}
+
+	db := database.GetDB()
+	// Mark room vacant
+	_, _ = db.Exec(db.Rebind("UPDATE rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), models.RoomStatusVacant, *user.RoomID)
+	// Clear user's room_id
+	_, _ = db.Exec(db.Rebind("UPDATE users SET room_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), user.ID)
+
+	c.Redirect(http.StatusFound, "/tenant/dashboard?success=released")
+}

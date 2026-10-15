@@ -224,3 +224,51 @@ func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, "/rooms?success=deleted")
 }
+
+// RentRoom allows an authenticated tenant to rent/book a vacant room
+func (h *RoomHandler) RentRoom(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil || user.Role != models.RoleTenant {
+		c.Redirect(http.StatusFound, "/login?next=/rooms")
+		return
+	}
+
+	idStr := c.Param("id")
+	roomID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/rooms?error=invalid_room")
+		return
+	}
+
+	db := database.GetDB()
+
+	// Check that room is currently vacant
+	var status string
+	var roomNumber string
+	err = db.QueryRow(db.Rebind("SELECT status, room_number FROM rooms WHERE id = ?"), roomID).Scan(&status, &roomNumber)
+	if err != nil || status != models.RoomStatusVacant {
+		c.Redirect(http.StatusFound, "/rooms?error=room_not_vacant")
+		return
+	}
+
+	// If tenant already had an old room, mark the old room as vacant
+	if user.RoomID != nil && *user.RoomID != roomID {
+		_, _ = db.Exec(db.Rebind("UPDATE rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), models.RoomStatusVacant, *user.RoomID)
+	}
+
+	// Update user's room_id
+	_, err = db.Exec(db.Rebind("UPDATE users SET room_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), roomID, user.ID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/rooms?error=rent_failed")
+		return
+	}
+
+	// Mark new room as occupied
+	_, err = db.Exec(db.Rebind("UPDATE rooms SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"), models.RoomStatusOccupied, roomID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/rooms?error=rent_failed")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/tenant/dashboard?success=rented")
+}

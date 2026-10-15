@@ -101,7 +101,11 @@ func main() {
 	tenantGroup.Use(middleware.AuthRequired(), middleware.RoleRequired(models.RoleTenant))
 	{
 		tenantGroup.GET("/dashboard", tenantHandler.ShowTenantDashboard)
+		tenantGroup.POST("/release-room", tenantHandler.ReleaseRoom)
 	}
+
+	// Room rental action (Tenant only)
+	r.POST("/rooms/:id/rent", middleware.AuthRequired(), middleware.RoleRequired(models.RoleTenant), roomHandler.RentRoom)
 
 	// ==================== Maintenance Routes (Authenticated) ====================
 	maintGroup := r.Group("/maintenance")
