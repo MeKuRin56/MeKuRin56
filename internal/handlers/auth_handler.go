@@ -187,8 +187,23 @@ func (h *AuthHandler) HandleRegister(c *gin.Context) {
 		return
 	}
 
-	if len(password) < 6 {
-		msg := "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร (Password must be at least 6 characters)"
+	// Input length limits (prevent DB overflow attacks)
+	if len(name) > 100 {
+		name = name[:100]
+	}
+	if len(email) > 150 {
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+			"Title": "สมัครสมาชิก | Register", "Error": "อีเมลยาวเกินไป",
+			"Name": name, "Phone": phone, "CSRFToken": middleware.GetCSRFToken(c),
+		})
+		return
+	}
+	if len(phone) > 20 {
+		phone = phone[:20]
+	}
+
+	if len(password) < 8 {
+		msg := "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร (Password must be at least 8 characters)"
 		if isAPI {
 			c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 			return

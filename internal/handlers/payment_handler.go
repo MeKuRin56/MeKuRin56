@@ -170,9 +170,40 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 
 		// Extension validation
 		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".pdf" {
+		allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".pdf": true}
+		if !allowedExts[ext] {
 			c.Redirect(http.StatusFound, "/payments?error=invalid_file_type")
 			return
+		}
+
+		// Read magic bytes to verify REAL file type (prevent extension spoofing)
+		magic := make([]byte, 8)
+		n, _ := file.Read(magic)
+		magic = magic[:n]
+
+		validMime := false
+		switch ext {
+		case ".jpg", ".jpeg":
+			// JPEG magic: FF D8 FF
+			validMime = len(magic) >= 3 && magic[0] == 0xFF && magic[1] == 0xD8 && magic[2] == 0xFF
+		case ".png":
+			// PNG magic: 89 50 4E 47 0D 0A 1A 0A
+			validMime = len(magic) >= 8 &&
+				magic[0] == 0x89 && magic[1] == 0x50 && magic[2] == 0x4E && magic[3] == 0x47 &&
+				magic[4] == 0x0D && magic[5] == 0x0A && magic[6] == 0x1A && magic[7] == 0x0A
+		case ".pdf":
+			// PDF magic: %PDF
+			validMime = len(magic) >= 4 && magic[0] == 0x25 && magic[1] == 0x50 && magic[2] == 0x44 && magic[3] == 0x46
+		}
+
+		if !validMime {
+			c.Redirect(http.StatusFound, "/payments?error=invalid_file_content")
+			return
+		}
+
+		// Seek back to start after reading magic bytes
+		if seeker, ok := file.(interface{ Seek(int64, int) (int64, error) }); ok {
+			_, _ = seeker.Seek(0, 0)
 		}
 
 		// Ensure upload dir exists
@@ -181,7 +212,7 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 			return
 		}
 
-		// Generate cryptographically unique filename
+		// Generate cryptographically unique filename (no original filename in path)
 		uniqueFilename := fmt.Sprintf("%s_%s%s", time.Now().Format("20060102"), uuid.New().String(), ext)
 		targetPath := filepath.Join(h.cfg.UploadDir, uniqueFilename)
 

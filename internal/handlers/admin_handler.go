@@ -218,3 +218,110 @@ func (h *AdminHandler) UnassignTenantRoom(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, "/admin/dashboard?success=unassigned")
 }
+// ShowTenants renders the dedicated tenant management page for admins
+func (h *AdminHandler) ShowTenants(c *gin.Context) {
+	currentUser := middleware.GetCurrentUser(c)
+	db := database.GetDB()
+
+	search := strings.TrimSpace(c.Query("search"))
+
+	query := `
+		SELECT u.id, u.name, u.email, u.phone, u.room_id, COALESCE(r.room_number, '-'), u.created_at
+		FROM users u
+		LEFT JOIN rooms r ON u.room_id = r.id
+		WHERE u.role = 'tenant'
+	`
+	args := []interface{}{}
+	if search != "" {
+		query += " AND (u.name LIKE ? OR u.email LIKE ? OR r.room_number LIKE ?)"
+		term := "%" + search + "%"
+		args = append(args, term, term, term)
+	}
+	query += " ORDER BY u.id DESC"
+
+	rows, _ := db.Query(db.Rebind(query), args...)
+	var tenants []models.User
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var t models.User
+			var rID sql.NullInt64
+			_ = rows.Scan(&t.ID, &t.Name, &t.Email, &t.Phone, &rID, &t.RoomNo, &t.CreatedAt)
+			if rID.Valid {
+				idVal := rID.Int64
+				t.RoomID = &idVal
+			}
+			tenants = append(tenants, t)
+		}
+	}
+
+	// All rooms for assignment dropdown
+	roomRows, _ := db.Query("SELECT id, room_number, room_type, price, floor, status FROM rooms ORDER BY room_number ASC")
+	var allRooms []models.Room
+	if roomRows != nil {
+		defer roomRows.Close()
+		for roomRows.Next() {
+			var rm models.Room
+			_ = roomRows.Scan(&rm.ID, &rm.RoomNumber, &rm.RoomType, &rm.Price, &rm.Floor, &rm.Status)
+			allRooms = append(allRooms, rm)
+		}
+	}
+
+	c.HTML(http.StatusOK, "admin_tenants.html", gin.H{
+		"Title":     "จัดการผู้เช่า | Tenant Management",
+		"User":      currentUser,
+		"Tenants":   tenants,
+		"Rooms":     allRooms,
+		"Search":    search,
+		"CSRFToken": middleware.GetCSRFToken(c),
+		"Success":   c.Query("success"),
+		"Error":     c.Query("error"),
+	})
+}
+
+// DeleteTenant deletes a tenant account (admin only, cannot delete self)
+func (h *AdminHandler) DeleteTenant(c *gin.Context) {
+	currentUser := middleware.GetCurrentUser(c)
+	idStr := c.Param("id")
+	tenantID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/tenants?error=invalid_id")
+		return
+	}
+
+	// Safety: cannot delete yourself
+	if tenantID == currentUser.ID {
+		c.Redirect(http.StatusFound, "/admin/tenants?error=cannot_delete_self")
+		return
+	}
+
+	db := database.GetDB()
+
+	// Verify target is actually a tenant (not an admin)
+	var role string
+	err = db.QueryRow(db.Rebind("SELECT role FROM users WHERE id=?"), tenantID).Scan(&role)
+	if err != nil || role != models.RoleTenant {
+		c.Redirect(http.StatusFound, "/admin/tenants?error=not_found_or_not_tenant")
+		return
+	}
+
+	// Free the room before deleting
+	var roomID sql.NullInt64
+	_ = db.QueryRow(db.Rebind("SELECT room_id FROM users WHERE id=?"), tenantID).Scan(&roomID)
+	if roomID.Valid {
+		_, _ = db.Exec(db.Rebind("UPDATE rooms SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"),
+			models.RoomStatusVacant, roomID.Int64)
+	}
+
+	// Cancel pending bookings
+	_, _ = db.Exec(db.Rebind("UPDATE room_bookings SET status='cancelled' WHERE tenant_id=? AND status='pending'"), tenantID)
+
+	// Delete user
+	_, err = db.Exec(db.Rebind("DELETE FROM users WHERE id=? AND role='tenant'"), tenantID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/tenants?error=delete_failed")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/tenants?success=deleted")
+}
