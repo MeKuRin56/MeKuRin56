@@ -55,8 +55,11 @@ func LoadConfig() *Config {
 		DBName:        getEnv("DB_NAME", "dormitory_db"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
 		SessionSecret: getOrGenerateSessionSecret(),
-		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@dormitory.com"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123456"),
+		// ADMIN_EMAIL and ADMIN_PASSWORD default to empty string intentionally.
+		// When empty in production, the Setup Wizard (/setup) handles first-time admin creation.
+		// In development, override via .env: ADMIN_EMAIL=admin@dormitory.com ADMIN_PASSWORD=admin123456
+		AdminEmail:    os.Getenv("ADMIN_EMAIL"),
+		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		AdminName:     getEnv("ADMIN_NAME", "Dormitory Administrator"),
 		UploadDir:     getEnv("UPLOAD_DIR", "./uploads"),
 		Environment:   getEnv("ENV", "development"),

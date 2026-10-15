@@ -10,19 +10,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// SeedData inserts initial administrative user, sample rooms, and demo data if not already present
+// SeedData inserts initial rooms and demo data if not already present
 func (db *DB) SeedData(cfg *config.Config) error {
 	log.Println("[DATABASE] Checking and seeding initial data...")
 
-	// 1. Seed Rooms if table is empty
+	// 1. Seed Rooms if table is empty — always needed regardless of mode
 	var roomCount int
 	err := db.QueryRow("SELECT COUNT(*) FROM rooms").Scan(&roomCount)
 	if err != nil {
 		return err
 	}
 
-	if roomCount == 0 {
-		log.Println("[DATABASE] Seeding default rooms...")
+	if roomCount == 0 && !cfg.IsProduction() {
+		// Only seed demo rooms in development mode
+		log.Println("[DATABASE] Seeding default rooms (development mode)...")
 		rooms := []struct {
 			number   string
 			roomType string
@@ -45,37 +46,44 @@ func (db *DB) SeedData(cfg *config.Config) error {
 			VALUES (?, ?, ?, ?, ?, ?)
 		`)
 		for _, r := range rooms {
-			_, err := db.Exec(insertRoomQuery, r.number, r.roomType, r.price, r.floor, r.status, r.desc)
-			if err != nil {
+			if _, err := db.Exec(insertRoomQuery, r.number, r.roomType, r.price, r.floor, r.status, r.desc); err != nil {
 				log.Printf("[DATABASE ERROR] Failed to seed room %s: %v", r.number, err)
 			}
 		}
 	}
 
-	// 2. Seed Admin User
-	var adminID int64
-	checkAdminQuery := db.Rebind("SELECT id FROM users WHERE email = ?")
-	err = db.QueryRow(checkAdminQuery, cfg.AdminEmail).Scan(&adminID)
-	if err == sql.ErrNoRows {
-		log.Printf("[DATABASE] Creating default admin account: %s", cfg.AdminEmail)
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
-		if err != nil {
-			return err
-		}
+	// 2. Seed Admin User & Demo Tenant — DEVELOPMENT mode only
+	// In production, the First-Time Setup Wizard (/setup) handles admin creation.
+	// No hardcoded credentials ever reach the live server this way.
+	if cfg.IsProduction() {
+		log.Println("[DATABASE] Production mode: skipping default accounts. Use the Setup Wizard at /setup to create your admin account.")
+		return nil
+	}
 
-		insertAdminQuery := db.Rebind(`
-			INSERT INTO users (name, email, password, role, phone)
-			VALUES (?, ?, ?, ?, ?)
-		`)
-		_, err = db.Exec(insertAdminQuery, cfg.AdminName, cfg.AdminEmail, string(hashedPassword), models.RoleAdmin, "081-234-5678")
-		if err != nil {
-			log.Printf("[DATABASE ERROR] Failed to create admin: %v", err)
-		} else {
-			log.Printf("[DATABASE] Default admin account created successfully!")
+	// Development: create default admin if env vars are set
+	if cfg.AdminEmail != "" {
+		var adminID int64
+		checkAdminQuery := db.Rebind("SELECT id FROM users WHERE email = ?")
+		err = db.QueryRow(checkAdminQuery, cfg.AdminEmail).Scan(&adminID)
+		if err == sql.ErrNoRows {
+			log.Printf("[DATABASE] Creating default admin account: %s", cfg.AdminEmail)
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			insertAdminQuery := db.Rebind(`
+				INSERT INTO users (name, email, password, role, phone)
+				VALUES (?, ?, ?, ?, ?)
+			`)
+			if _, err = db.Exec(insertAdminQuery, cfg.AdminName, cfg.AdminEmail, string(hashedPassword), models.RoleAdmin, "081-234-5678"); err != nil {
+				log.Printf("[DATABASE ERROR] Failed to create admin: %v", err)
+			} else {
+				log.Printf("[DATABASE] Default admin account created successfully!")
+			}
 		}
 	}
 
-	// 3. Seed Demo Tenant
+	// 3. Seed Demo Tenant (Development only)
 	demoTenantEmail := "tenant@dormitory.com"
 	var tenantID int64
 	checkTenantQuery := db.Rebind("SELECT id FROM users WHERE email = ?")
@@ -103,7 +111,6 @@ func (db *DB) SeedData(cfg *config.Config) error {
 			tenantID, _ = res.LastInsertId()
 			log.Printf("[DATABASE] Demo tenant account created successfully!")
 
-			// Seed sample maintenance requests for demo tenant
 			if room101ID > 0 {
 				insertMaintQuery := db.Rebind(`
 					INSERT INTO maintenance_requests (tenant_id, room_id, title, description, category, status, admin_notes)
@@ -112,7 +119,6 @@ func (db *DB) SeedData(cfg *config.Config) error {
 				_, _ = db.Exec(insertMaintQuery, tenantID, room101ID, "ก๊อกน้ำอ่างล้างหน้ารั่วซึม", "มีน้ำหยดตลอดเวลาบริเวณข้อต่อใต้อ่างล้างหน้าในห้องน้ำ", models.CategoryPlumbing, models.MaintStatusInProgress, "ช่างนัดเข้าตรวจสอบวันพรุ่งนี้ 10:00 น.")
 				_, _ = db.Exec(insertMaintQuery, tenantID, room101ID, "แอร์ไม่ค่อยเย็น มีเสียงดัง", "เปิด 24 องศาแล้วรู้สึกไม่เย็น และมีเสียงลมดังผิดปกติ", models.CategoryAirCon, models.MaintStatusCompleted, "ล้างแผ่นกรองและเติมน้ำยาแอร์เรียบร้อยแล้ว")
 
-				// Seed sample rent payments
 				insertPayQuery := db.Rebind(`
 					INSERT INTO payments (tenant_id, room_id, billing_month, amount, payment_date, slip_url, status, rejection_reason)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -120,7 +126,6 @@ func (db *DB) SeedData(cfg *config.Config) error {
 				_, _ = db.Exec(insertPayQuery, tenantID, room101ID, "2026-09", 4500.00, "2026-09-02", "", models.PaymentStatusApproved, "")
 				_, _ = db.Exec(insertPayQuery, tenantID, room101ID, "2026-10", 4910.00, "2026-10-01", "", models.PaymentStatusPending, "")
 
-				// Seed sample invoice
 				insertInvQuery := db.Rebind(`
 					INSERT INTO invoices (tenant_id, room_id, billing_month, room_price, water_units, water_rate, water_total, electric_units, electric_rate, electric_total, other_fees, total_amount, due_date, status, notes)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
