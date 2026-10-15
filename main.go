@@ -1,0 +1,164 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"dormitory-management-system/config"
+	"dormitory-management-system/internal/database"
+	"dormitory-management-system/internal/handlers"
+	"dormitory-management-system/internal/middleware"
+	"dormitory-management-system/internal/models"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	// 1. Load application configuration
+	cfg := config.LoadConfig()
+
+	// 2. Initialize database, run migrations, and seed initial data
+	db, err := database.InitDB(cfg)
+	if err != nil {
+		log.Fatalf("[FATAL] Database initialization failed: %v", err)
+	}
+	defer db.Close()
+
+	// 3. Initialize authentication secrets
+	middleware.InitAuth(cfg)
+
+	// 4. Set Gin Mode
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// 5. Create Gin engine
+	r := gin.Default()
+
+	// 6. Global Middlewares
+	r.Use(middleware.SecurityHeadersMiddleware())
+
+	// Static Assets & Uploads
+	r.Static("/static", "./static")
+	r.Static("/locales", "./locales")
+
+	// Ensure upload directory exists and serve uploaded slips safely
+	if err := os.MkdirAll(cfg.UploadDir, 0755); err != nil {
+		log.Printf("[WARNING] Could not create upload directory: %v", err)
+	}
+	r.Static("/uploads", cfg.UploadDir)
+
+	// CSRF Protection Middleware
+	r.Use(middleware.CSRFMiddleware(cfg.IsProduction()))
+
+	// HTML Templates
+	r.LoadHTMLGlob("templates/*")
+
+	// Rate limiter for login & registration (15 attempts per minute per IP)
+	authLimiter := middleware.NewRateLimiter(15, time.Minute)
+
+	// Handlers initialization
+	authHandler := handlers.NewAuthHandler(cfg)
+	roomHandler := handlers.NewRoomHandler(cfg)
+	maintHandler := handlers.NewMaintenanceHandler(cfg)
+	paymentHandler := handlers.NewPaymentHandler(cfg)
+	adminHandler := handlers.NewAdminHandler(cfg)
+	tenantHandler := handlers.NewTenantHandler(cfg)
+
+	// ==================== Public & Home Routes ====================
+	r.GET("/", func(c *gin.Context) {
+		currentUser := middleware.GetCurrentUser(c)
+		var stats models.DashboardStats
+
+		_ = db.QueryRow("SELECT COUNT(*) FROM rooms").Scan(&stats.TotalRooms)
+		_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM rooms WHERE status = ?"), models.RoomStatusVacant).Scan(&stats.VacantRooms)
+		_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM rooms WHERE status = ?"), models.RoomStatusOccupied).Scan(&stats.OccupiedRooms)
+		_ = db.QueryRow(db.Rebind("SELECT COUNT(*) FROM rooms WHERE status = ?"), models.RoomStatusMaintenance).Scan(&stats.MaintenanceRooms)
+
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"Title": "ระบบจัดการหอพัก | Dormitory MS",
+			"User":  currentUser,
+			"Stats": stats,
+		})
+	})
+
+	// Rooms browsing (Public & Logged-in)
+	r.GET("/rooms", roomHandler.ListRooms)
+
+	// ==================== Authentication Routes ====================
+	r.GET("/login", authHandler.ShowLogin)
+	r.POST("/login", authLimiter.Middleware(), authHandler.HandleLogin)
+	r.GET("/register", authHandler.ShowRegister)
+	r.POST("/register", authLimiter.Middleware(), authHandler.HandleRegister)
+	r.GET("/logout", authHandler.HandleLogout)
+	r.GET("/api/me", authHandler.GetCurrentUserAPI)
+
+	// ==================== Tenant Protected Routes ====================
+	tenantGroup := r.Group("/tenant")
+	tenantGroup.Use(middleware.AuthRequired(), middleware.RoleRequired(models.RoleTenant))
+	{
+		tenantGroup.GET("/dashboard", tenantHandler.ShowTenantDashboard)
+	}
+
+	// ==================== Maintenance Routes (Authenticated) ====================
+	maintGroup := r.Group("/maintenance")
+	maintGroup.Use(middleware.AuthRequired())
+	{
+		maintGroup.GET("", maintHandler.ListMaintenance)
+		maintGroup.POST("/new", middleware.RoleRequired(models.RoleTenant), maintHandler.CreateMaintenance)
+		maintGroup.POST("/:id/status", middleware.RoleRequired(models.RoleAdmin), maintHandler.UpdateMaintenanceStatus)
+		maintGroup.POST("/:id/delete", maintHandler.DeleteMaintenance)
+	}
+
+	// ==================== Payment Routes (Authenticated) ====================
+	payGroup := r.Group("/payments")
+	payGroup.Use(middleware.AuthRequired())
+	{
+		payGroup.GET("", paymentHandler.ListPayments)
+		payGroup.POST("/new", middleware.RoleRequired(models.RoleTenant), paymentHandler.CreatePayment)
+		payGroup.POST("/:id/status", middleware.RoleRequired(models.RoleAdmin), paymentHandler.UpdatePaymentStatus)
+	}
+
+	// ==================== Admin Protected Routes ====================
+	adminGroup := r.Group("/admin")
+	adminGroup.Use(middleware.AuthRequired(), middleware.RoleRequired(models.RoleAdmin))
+	{
+		adminGroup.GET("/dashboard", adminHandler.ShowAdminDashboard)
+		adminGroup.POST("/assign-room", adminHandler.AssignTenantRoom)
+		adminGroup.POST("/unassign-room", adminHandler.UnassignTenantRoom)
+	}
+
+	// Admin Room Management
+	adminRooms := r.Group("/rooms")
+	adminRooms.Use(middleware.AuthRequired(), middleware.RoleRequired(models.RoleAdmin))
+	{
+		adminRooms.POST("/new", roomHandler.CreateRoom)
+		adminRooms.POST("/:id/edit", roomHandler.UpdateRoom)
+		adminRooms.POST("/:id/delete", roomHandler.DeleteRoom)
+	}
+
+	// ==================== 404 Not Found Handler ====================
+	r.NoRoute(func(c *gin.Context) {
+		currentUser := middleware.GetCurrentUser(c)
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"Title":   "404 Not Found",
+			"Message": "ขออภัย ไม่พบหน้าที่คุณร้องขอ (The requested page could not be found)",
+			"User":    currentUser,
+		})
+	})
+
+	// 7. Start HTTP Server
+	addr := fmt.Sprintf(":%s", cfg.Port)
+	log.Printf("=================================================================")
+	log.Printf("  Dormitory Management System is running at http://localhost:%s", cfg.Port)
+	log.Printf("  Database Driver: %s", db.Driver)
+	log.Printf("  Environment:     %s", cfg.Environment)
+	log.Printf("=================================================================")
+
+	if err := r.Run(addr); err != nil {
+		log.Fatalf("[FATAL] Server failed to start: %v", err)
+	}
+}

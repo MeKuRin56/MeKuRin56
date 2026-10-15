@@ -1,0 +1,33 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+dormitory-server
+dormitory-management-system
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+dormitory.db*
+
+# Environment secrets
+.env
+!.env.example
+
+# User uploads (keep directory structure)
+uploads/*
+!uploads/.gitkeep
+
+# Test artifacts
+test_uploads/
+test_dormitory.db*
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

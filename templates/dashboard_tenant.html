@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="dashboard.tenantTitle">แดชบอร์ดผู้เช่า | Tenant Dashboard - Dormitory MS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-building-check"></i>
+        <span data-i18n="app.name">Dormitory MS</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="/" data-i18n="nav.home"><i class="bi bi-house-door me-1"></i>หน้าแรก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/tenant/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/payments" data-i18n="nav.payments"><i class="bi bi-credit-card me-1"></i>ชำระค่าเช่า</a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-2">
+          <!-- Theme Switcher -->
+          <button id="theme-toggle-btn" class="btn btn-sm btn-secondary-custom">
+            <i id="theme-toggle-icon" class="bi bi-moon-stars-fill text-primary"></i>
+            <span id="theme-toggle-text" class="d-none d-md-inline" data-i18n="nav.themeDark">โหมดมืด</span>
+          </button>
+
+          <!-- Language Switcher -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-secondary-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-translate"></i>
+              <span id="current-lang-label">🇹🇭 TH</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="th">🇹🇭 ภาษาไทย (TH)</a></li>
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="en">🇬🇧 English (EN)</a></li>
+            </ul>
+          </div>
+
+          <!-- User Dropdown -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-primary-custom dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i>
+              <span>{{.User.Name}}</span>
+              <span class="badge bg-light text-dark ms-1">Tenant</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item text-danger" href="/logout" data-i18n="nav.logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="container py-4">
+    <!-- Header Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bold mb-1" data-i18n="dashboard.tenantTitle">แดชบอร์ดผู้เช่า</h2>
+        <p class="text-secondary mb-0"><span data-i18n="dashboard.welcome">ยินดีต้อนรับ</span>, <strong>{{.User.Name}}</strong> &bull; {{.User.Email}}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="/maintenance" class="btn btn-warning text-dark fw-semibold">
+          <i class="bi bi-wrench me-1"></i> <span data-i18n="dashboard.newMaintenanceBtn">แจ้งซ่อมปัญหา</span>
+        </a>
+        <a href="/payments" class="btn btn-success fw-semibold">
+          <i class="bi bi-receipt me-1"></i> <span data-i18n="dashboard.newPaymentBtn">แจ้งชำระค่าเช่า</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {{if .Success}}
+      <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <div data-i18n="common.success">ทำรายการสำเร็จเรียบร้อยแล้ว</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+    {{if .Error}}
+      <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <div data-i18n="common.error">เกิดข้อผิดพลาดในการทำรายการ</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+
+    <!-- Room Information Card -->
+    <div class="card card-custom p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">
+          <i class="bi bi-house-door-fill text-primary me-2"></i>
+          <span data-i18n="dashboard.myRoom">ข้อมูลห้องพักของฉัน</span>
+        </h5>
+        {{if .Room}}
+          <span class="badge badge-status badge-occupied" data-i18n="status.occupied">มีผู้เช่า (สัญญาปัจจุบัน)</span>
+        {{end}}
+      </div>
+
+      {{if .Room}}
+        <div class="row g-4 align-items-center">
+          <div class="col-md-3 text-center border-end">
+            <div class="display-4 fw-bold text-primary">{{.Room.RoomNumber}}</div>
+            <div class="text-secondary fw-semibold">ห้องพักหมายเลข</div>
+          </div>
+          <div class="col-md-9">
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <div class="text-secondary small" data-i18n="rooms.roomType">ประเภทห้อง</div>
+                <div class="fs-5 fw-bold">{{.Room.RoomType}}</div>
+              </div>
+              <div class="col-sm-4">
+                <div class="text-secondary small" data-i18n="rooms.floor">ชั้นที่</div>
+                <div class="fs-5 fw-bold">ชั้น {{.Room.Floor}}</div>
+              </div>
+              <div class="col-sm-4">
+                <div class="text-secondary small" data-i18n="rooms.price">ค่าเช่ารายเดือน</div>
+                <div class="fs-5 fw-bold text-success">{{printf "%.2f" .Room.Price}} ฿</div>
+              </div>
+              <div class="col-12 mt-2">
+                <div class="text-secondary small" data-i18n="rooms.description">รายละเอียดห้องพัก</div>
+                <div class="text-muted">{{.Room.Description}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {{else}}
+        <div class="alert alert-info mb-0 d-flex align-items-center">
+          <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+          <span data-i18n="dashboard.noRoomAssigned">ยังไม่ได้รับการจัดสรรห้องพัก กรุณาติดต่อผู้ดูแลหอพัก</span>
+        </div>
+      {{end}}
+    </div>
+
+    <!-- Personal Maintenance and Payments History -->
+    <div class="row g-4">
+      
+      <!-- Personal Maintenance Requests Table -->
+      <div class="col-lg-6">
+        <div class="card card-custom h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-tools text-warning me-2"></i>
+              <span data-i18n="maintenance.title">ประวัติการแจ้งซ่อมของฉัน</span>
+            </h5>
+            <a href="/maintenance" class="btn btn-sm btn-outline-primary" data-i18n="maintenance.newRequest">+ แจ้งซ่อม</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-custom mb-0">
+              <thead>
+                <tr>
+                  <th data-i18n="maintenance.issueTitle">ปัญหา</th>
+                  <th data-i18n="maintenance.category">ประเภท</th>
+                  <th data-i18n="maintenance.status">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{if .Requests}}
+                  {{range .Requests}}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold">{{.Title}}</div>
+                        <small class="text-secondary">{{.Description}}</small>
+                        {{if .AdminNotes}}
+                          <div class="mt-1 small text-info"><i class="bi bi-chat-left-dots me-1"></i>{{.AdminNotes}}</div>
+                        {{end}}
+                      </td>
+                      <td>
+                        <span class="badge-category" data-i18n="category.{{.Category}}">{{.Category}}</span>
+                      </td>
+                      <td>
+                        <span class="badge-status badge-{{.Status}}" data-i18n="status.{{.Status}}">{{.Status}}</span>
+                      </td>
+                    </tr>
+                  {{end}}
+                {{else}}
+                  <tr>
+                    <td colspan="3" class="text-center py-4 text-secondary" data-i18n="maintenance.noRequests">ยังไม่มีรายการแจ้งซ่อม</td>
+                  </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Payments Table -->
+      <div class="col-lg-6">
+        <div class="card card-custom h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-credit-card text-success me-2"></i>
+              <span data-i18n="payments.title">ประวัติการชำระเงินของฉัน</span>
+            </h5>
+            <a href="/payments" class="btn btn-sm btn-outline-primary" data-i18n="payments.newPayment">+ ส่งสลิป</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-custom mb-0">
+              <thead>
+                <tr>
+                  <th data-i18n="payments.billingMonth">รอบเดือน</th>
+                  <th data-i18n="payments.amount">จำนวนเงิน</th>
+                  <th data-i18n="payments.status">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{if .Payments}}
+                  {{range .Payments}}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold">{{.BillingMonth}}</div>
+                        <small class="text-secondary">{{.PaymentDate}}</small>
+                      </td>
+                      <td>
+                        <strong>{{printf "%.2f" .Amount}}</strong> ฿
+                        {{if .SlipURL}}
+                          <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="modal" data-bs-target="#slipPreviewModal" data-slip-url="{{.SlipURL}}">
+                            <i class="bi bi-image"></i>
+                          </button>
+                        {{end}}
+                      </td>
+                      <td>
+                        <span class="badge-status badge-{{.Status}}" data-i18n="status.{{.Status}}">{{.Status}}</span>
+                        {{if .RejectionReason}}
+                          <div class="small text-danger mt-1">{{.RejectionReason}}</div>
+                        {{end}}
+                      </td>
+                    </tr>
+                  {{end}}
+                {{else}}
+                  <tr>
+                    <td colspan="3" class="text-center py-4 text-secondary" data-i18n="payments.noPayments">ยังไม่มีประวัติการชำระเงิน</td>
+                  </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Slip Preview Modal -->
+  <div class="modal fade" id="slipPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" data-i18n="payments.slipPreview">หลักฐานการชำระเงิน</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center p-3">
+          <img id="slipPreviewImage" src="" alt="Slip" class="img-fluid rounded border shadow-sm mb-2" style="max-height: 480px;">
+          <iframe id="slipPreviewPdf" src="" class="w-100 d-none" style="height: 480px; border: none;"></iframe>
+        </div>
+        <div class="modal-footer">
+          <a id="slipDownloadBtn" href="#" target="_blank" class="btn btn-primary-custom btn-sm">เปิดดูไฟล์เต็ม</a>
+          <button type="button" class="btn btn-secondary-custom btn-sm" data-bs-dismiss="modal" data-i18n="common.close">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container text-center">
+      <p class="mb-0 small text-secondary">Dormitory Management System &bull; Go + PostgreSQL</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

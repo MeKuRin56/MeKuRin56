@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="dashboard.adminTitle">แดชบอร์ดผู้ดูแลระบบ | Admin Dashboard - Dormitory MS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-building-check"></i>
+        <span data-i18n="app.name">Dormitory MS</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="/" data-i18n="nav.home"><i class="bi bi-house-door me-1"></i>หน้าแรก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/admin/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>จัดการห้องพัก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>รายการแจ้งซ่อม</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/payments" data-i18n="nav.payments"><i class="bi bi-credit-card me-1"></i>รายการชำระเงิน</a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-2">
+          <!-- Theme Switcher -->
+          <button id="theme-toggle-btn" class="btn btn-sm btn-secondary-custom">
+            <i id="theme-toggle-icon" class="bi bi-moon-stars-fill text-primary"></i>
+            <span id="theme-toggle-text" class="d-none d-md-inline" data-i18n="nav.themeDark">โหมดมืด</span>
+          </button>
+
+          <!-- Language Switcher -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-secondary-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-translate"></i>
+              <span id="current-lang-label">🇹🇭 TH</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="th">🇹🇭 ภาษาไทย (TH)</a></li>
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="en">🇬🇧 English (EN)</a></li>
+            </ul>
+          </div>
+
+          <!-- User Dropdown -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-primary-custom dropdown-toggle d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-shield-check"></i>
+              <span>{{.User.Name}}</span>
+              <span class="badge bg-light text-dark ms-1">Admin</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item text-danger" href="/logout" data-i18n="nav.logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="container py-4">
+    <!-- Header Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bold mb-1" data-i18n="dashboard.adminTitle">แดชบอร์ดผู้ดูแลระบบ</h2>
+        <p class="text-secondary mb-0"><span data-i18n="dashboard.welcome">ยินดีต้อนรับ</span>, <strong>{{.User.Name}}</strong> &bull; {{.User.Email}}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="/rooms" class="btn btn-primary-custom">
+          <i class="bi bi-plus-circle me-1"></i> <span data-i18n="rooms.addRoom">เพิ่มห้องพักใหม่</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {{if .Success}}
+      <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <div data-i18n="common.success">ทำรายการสำเร็จเรียบร้อยแล้ว</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+    {{if .Error}}
+      <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <div data-i18n="common.error">เกิดข้อผิดพลาดในการทำรายการ</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+
+    <!-- Statistics Grid (8 Metrics) -->
+    <div class="row g-3 mb-4">
+      <!-- Total Rooms -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-buildings"></i>
+          </div>
+          <div>
+            <div class="stat-val">{{.Stats.TotalRooms}}</div>
+            <div class="stat-label" data-i18n="dashboard.totalRooms">ห้องพักทั้งหมด</div>
+          </div>
+        </div>
+      </div>
+      <!-- Vacant Rooms -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-door-open"></i>
+          </div>
+          <div>
+            <div class="stat-val text-success">{{.Stats.VacantRooms}}</div>
+            <div class="stat-label" data-i18n="dashboard.vacantRooms">ห้องว่าง</div>
+          </div>
+        </div>
+      </div>
+      <!-- Occupied Rooms -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-person-badge"></i>
+          </div>
+          <div>
+            <div class="stat-val text-info">{{.Stats.OccupiedRooms}}</div>
+            <div class="stat-label" data-i18n="dashboard.occupiedRooms">ห้องมีผู้เช่า</div>
+          </div>
+        </div>
+      </div>
+      <!-- Maintenance Rooms -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-cone-striped"></i>
+          </div>
+          <div>
+            <div class="stat-val text-warning">{{.Stats.MaintenanceRooms}}</div>
+            <div class="stat-label" data-i18n="dashboard.maintenanceRooms">กำลังปรับปรุง</div>
+          </div>
+        </div>
+      </div>
+      <!-- Total Tenants -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-secondary-subtle text-dark">
+            <i class="bi bi-people"></i>
+          </div>
+          <div>
+            <div class="stat-val">{{.Stats.TotalTenants}}</div>
+            <div class="stat-label" data-i18n="dashboard.totalTenants">ผู้เช่าทั้งหมด</div>
+          </div>
+        </div>
+      </div>
+      <!-- Pending Requests -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-danger-subtle text-danger">
+            <i class="bi bi-exclamation-octagon"></i>
+          </div>
+          <div>
+            <div class="stat-val text-danger">{{.Stats.PendingRequests}}</div>
+            <div class="stat-label" data-i18n="dashboard.pendingRequests">แจ้งซ่อมรอดำเนินการ</div>
+          </div>
+        </div>
+      </div>
+      <!-- Pending Payments -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-hourglass-split"></i>
+          </div>
+          <div>
+            <div class="stat-val text-warning">{{.Stats.PendingPayments}}</div>
+            <div class="stat-label" data-i18n="dashboard.pendingPayments">ชำระเงินรอตรวจสอบ</div>
+          </div>
+        </div>
+      </div>
+      <!-- Monthly Revenue -->
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-cash-stack"></i>
+          </div>
+          <div>
+            <div class="stat-val text-success">{{printf "%.0f" .Stats.MonthlyRevenue}}</div>
+            <div class="stat-label" data-i18n="dashboard.monthlyRevenue">รายได้เดือนนี้ (บาท)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row: Recent Maintenance Requests & Recent Payments -->
+    <div class="row g-4 mb-4">
+      
+      <!-- Recent Maintenance Requests Table -->
+      <div class="col-lg-6">
+        <div class="card card-custom h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-tools text-warning me-2"></i>
+              <span data-i18n="dashboard.recentMaintenance">รายการแจ้งซ่อมล่าสุด</span>
+            </h5>
+            <a href="/maintenance" class="btn btn-sm btn-outline-primary" data-i18n="dashboard.viewAll">ดูทั้งหมด</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-custom mb-0">
+              <thead>
+                <tr>
+                  <th data-i18n="rooms.roomNumber">ห้อง</th>
+                  <th data-i18n="maintenance.issueTitle">หัวข้อ</th>
+                  <th data-i18n="maintenance.status">สถานะ</th>
+                  <th data-i18n="common.actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{if .RecentMaint}}
+                  {{range .RecentMaint}}
+                    <tr>
+                      <td><span class="badge bg-secondary">{{.RoomNumber}}</span></td>
+                      <td>
+                        <div class="fw-semibold text-truncate" style="max-width: 180px;">{{.Title}}</div>
+                        <small class="text-secondary">{{.TenantName}}</small>
+                      </td>
+                      <td>
+                        <span class="badge-status badge-{{.Status}}" data-i18n="status.{{.Status}}">{{.Status}}</span>
+                      </td>
+                      <td>
+                        <button class="btn btn-sm btn-secondary-custom" data-bs-toggle="modal" data-bs-target="#editMaintModal"
+                                data-id="{{.ID}}" data-title="{{.Title}}" data-status="{{.Status}}" data-notes="{{.AdminNotes}}">
+                          <i class="bi bi-pencil-square"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  {{end}}
+                {{else}}
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-secondary" data-i18n="maintenance.noRequests">ไม่มีรายการแจ้งซ่อม</td>
+                  </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Payments Table -->
+      <div class="col-lg-6">
+        <div class="card card-custom h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-credit-card text-success me-2"></i>
+              <span data-i18n="dashboard.recentPayments">รายการชำระเงินล่าสุด</span>
+            </h5>
+            <a href="/payments" class="btn btn-sm btn-outline-primary" data-i18n="dashboard.viewAll">ดูทั้งหมด</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-custom mb-0">
+              <thead>
+                <tr>
+                  <th data-i18n="rooms.tenant">ผู้เช่า</th>
+                  <th data-i18n="payments.amount">ยอดเงิน</th>
+                  <th data-i18n="payments.status">สถานะ</th>
+                  <th data-i18n="common.actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{if .RecentPayments}}
+                  {{range .RecentPayments}}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold">{{.TenantName}}</div>
+                        <small class="text-secondary">ห้อง {{.RoomNumber}} &bull; {{.BillingMonth}}</small>
+                      </td>
+                      <td>
+                        <strong>{{printf "%.2f" .Amount}}</strong> ฿
+                      </td>
+                      <td>
+                        <span class="badge-status badge-{{.Status}}" data-i18n="status.{{.Status}}">{{.Status}}</span>
+                      </td>
+                      <td>
+                        <div class="d-flex gap-1">
+                          {{if .SlipURL}}
+                            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#slipPreviewModal" data-slip-url="{{.SlipURL}}" title="ดูสลิป">
+                              <i class="bi bi-image"></i>
+                            </button>
+                          {{end}}
+                          <button class="btn btn-sm btn-secondary-custom" data-bs-toggle="modal" data-bs-target="#reviewPaymentModal"
+                                  data-id="{{.ID}}" data-tenant="{{.TenantName}}" data-month="{{.BillingMonth}}"
+                                  data-amount="{{.Amount}}" data-status="{{.Status}}" data-reason="{{.RejectionReason}}" data-slip="{{.SlipURL}}">
+                            <i class="bi bi-check-circle"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {{end}}
+                {{else}}
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-secondary" data-i18n="payments.noPayments">ไม่มีรายการชำระเงิน</td>
+                  </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tenant Management Section (Room Allocation) -->
+    <div class="card card-custom mb-4">
+      <div class="card-header bg-transparent py-3">
+        <h5 class="fw-bold mb-0">
+          <i class="bi bi-people-fill text-primary me-2"></i>
+          <span data-i18n="dashboard.tenantManagement">การจัดการผู้เช่าและจัดสรรห้องพัก</span>
+        </h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-custom mb-0">
+          <thead>
+            <tr>
+              <th data-i18n="auth.name">ชื่อผู้เช่า</th>
+              <th data-i18n="auth.email">อีเมล</th>
+              <th data-i18n="auth.phone">เบอร์โทร</th>
+              <th data-i18n="rooms.roomNumber">ห้องพักปัจจุบัน</th>
+              <th data-i18n="common.actions">จัดสรรห้องพัก</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{if .Tenants}}
+              {{range .Tenants}}
+                <tr>
+                  <td class="fw-semibold">{{.Name}}</td>
+                  <td>{{.Email}}</td>
+                  <td>{{.Phone}}</td>
+                  <td>
+                    {{if .RoomNo}}
+                      <span class="badge bg-primary fs-6"><i class="bi bi-door-closed me-1"></i>ห้อง {{.RoomNo}}</span>
+                    {{else}}
+                      <span class="badge bg-secondary" data-i18n="dashboard.noRoomAssigned">ยังไม่มีห้อง</span>
+                    {{end}}
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <!-- Assign Form -->
+                      <form action="/admin/assign-room" method="POST" class="d-flex gap-1 align-items-center">
+                        <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                        <input type="hidden" name="tenant_id" value="{{.ID}}">
+                        <select name="room_id" class="form-select form-select-sm" style="width: 140px;" required>
+                          <option value="" data-i18n="common.selectOption">-- เลือกห้อง --</option>
+                          {{range $.Rooms}}
+                            <option value="{{.ID}}">ห้อง {{.RoomNumber}} ({{.RoomType}})</option>
+                          {{end}}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary-custom" data-i18n="common.assign">บันทึก</button>
+                      </form>
+
+                      {{if .RoomID}}
+                        <!-- Unassign Form -->
+                        <form action="/admin/unassign-room" method="POST" onsubmit="return confirm('ยืนยันยกเลิกการจัดสรรห้องพักสำหรับผู้เช่ารายนี้?');">
+                          <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                          <input type="hidden" name="tenant_id" value="{{.ID}}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger" data-i18n="common.unassign">ปลดห้อง</button>
+                        </form>
+                      {{end}}
+                    </div>
+                  </td>
+                </tr>
+              {{end}}
+            {{else}}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-secondary">ไม่มีข้อมูลผู้เช่า</td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modals: Slip Preview, Maintenance Status, Payment Review -->
+  <!-- 1. Slip Preview Modal -->
+  <div class="modal fade" id="slipPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" data-i18n="payments.slipPreview">หลักฐานการชำระเงิน</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center p-3">
+          <img id="slipPreviewImage" src="" alt="Slip" class="img-fluid rounded border shadow-sm mb-2" style="max-height: 480px;">
+          <iframe id="slipPreviewPdf" src="" class="w-100 d-none" style="height: 480px; border: none;"></iframe>
+        </div>
+        <div class="modal-footer">
+          <a id="slipDownloadBtn" href="#" target="_blank" class="btn btn-primary-custom btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i> เปิดดูไฟล์เต็ม
+          </a>
+          <button type="button" class="btn btn-secondary-custom btn-sm" data-bs-dismiss="modal" data-i18n="common.close">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Edit Maintenance Status Modal -->
+  <div class="modal fade" id="editMaintModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editMaintForm" method="POST">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <div class="modal-header">
+            <h5 class="modal-title" data-i18n="maintenance.editStatus">อัปเดตสถานะการซ่อม</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <h6 id="maint_modal_title" class="fw-bold mb-3 text-primary"></h6>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="maintenance.status">สถานะ</label>
+              <select name="status" id="maint_status" class="form-select" required>
+                <option value="pending" data-i18n="status.pending">รอดำเนินการ (Pending)</option>
+                <option value="in_progress" data-i18n="status.in_progress">กำลังดำเนินการ (In Progress)</option>
+                <option value="completed" data-i18n="status.completed">เสร็จสิ้น (Completed)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="maintenance.adminNotes">บันทึกของช่าง / ผู้ดูแล</label>
+              <textarea name="admin_notes" id="maint_notes" class="form-control" rows="3" placeholder="ระบุการดำเนินงานหรือนัดหมาย..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal" data-i18n="common.cancel">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary-custom" data-i18n="common.save">บันทึกการเปลี่ยนแปลง</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Review Payment Modal -->
+  <div class="modal fade" id="reviewPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="reviewPaymentForm" method="POST">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <div class="modal-header">
+            <h5 class="modal-title" data-i18n="payments.reviewPayment">ตรวจสอบหลักฐานการชำระเงิน</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="p-3 bg-secondary-subtle rounded mb-3">
+              <div class="text-secondary small" data-i18n="rooms.tenant">ผู้เช่า</div>
+              <h5 id="payment_tenant_name" class="fw-bold mb-1"></h5>
+              <div id="payment_info" class="text-primary fw-semibold"></div>
+              <a id="payment_slip_link" href="#" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                <i class="bi bi-file-earmark-image me-1"></i> <span data-i18n="payments.slipPreview">เปิดดูสลิปโอนเงิน</span>
+              </a>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" data-i18n="payments.status">ผลการตรวจสอบ</label>
+              <select name="status" id="payment_status" class="form-select" required>
+                <option value="pending" data-i18n="status.pending">รอดำเนินการ (Pending)</option>
+                <option value="approved" data-i18n="status.approved">อนุมัติ ได้รับเงินแล้ว (Approved)</option>
+                <option value="rejected" data-i18n="status.rejected">ปฏิเสธ ไม่ผ่าน (Rejected)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="payments.rejectionReason">หมายเหตุ / เหตุผลที่ปฏิเสธ</label>
+              <textarea name="rejection_reason" id="payment_reason" class="form-control" rows="2" placeholder="กรณีปฏิเสธ ให้ระบุสาเหตุ..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal" data-i18n="common.cancel">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary-custom" data-i18n="common.save">บันทึกผลการตรวจสอบ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container text-center">
+      <p class="mb-0 small text-secondary">Dormitory Management System &bull; Go + PostgreSQL</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

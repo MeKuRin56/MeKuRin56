@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dormitory_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: dormitory_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql
+      - ./migrations/002_seed_data.sql:/docker-entrypoint-initdb.d/002_seed_data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dormitory_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dormitory_web
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      ENV: "production"
+      DB_DRIVER: "postgres"
+      DATABASE_URL: "postgres://postgres:postgrespassword2026@postgres:5432/dormitory_db?sslmode=disable"
+      SESSION_SECRET: "dormitory-production-super-secret-key-32-chars-long!"
+      ADMIN_NAME: "Dormitory Administrator"
+      ADMIN_EMAIL: "admin@dormitory.com"
+      ADMIN_PASSWORD: "admin123456"
+      UPLOAD_DIR: "/app/uploads"
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  pgdata:
+    driver: local
+  uploads_data:
+    driver: local

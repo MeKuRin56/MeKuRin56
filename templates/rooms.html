@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="rooms.title">รายการห้องพัก | Rooms - Dormitory MS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-building-check"></i>
+        <span data-i18n="app.name">Dormitory MS</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="/" data-i18n="nav.home"><i class="bi bi-house-door me-1"></i>หน้าแรก</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/rooms" data-i18n="nav.rooms"><i class="bi bi-door-open me-1"></i>ห้องพัก</a>
+          </li>
+          {{if .User}}
+            {{if eq .User.Role "admin"}}
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a>
+              </li>
+            {{else}}
+              <li class="nav-item">
+                <a class="nav-link" href="/tenant/dashboard" data-i18n="nav.dashboard"><i class="bi bi-speedometer2 me-1"></i>แดชบอร์ด</a>
+              </li>
+            {{end}}
+            <li class="nav-item">
+              <a class="nav-link" href="/maintenance" data-i18n="nav.maintenance"><i class="bi bi-tools me-1"></i>แจ้งซ่อม</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/payments" data-i18n="nav.payments"><i class="bi bi-credit-card me-1"></i>ชำระค่าเช่า</a>
+            </li>
+          {{end}}
+        </ul>
+
+        <div class="d-flex align-items-center gap-2">
+          <!-- Theme Toggle -->
+          <button id="theme-toggle-btn" class="btn btn-sm btn-secondary-custom">
+            <i id="theme-toggle-icon" class="bi bi-moon-stars-fill text-primary"></i>
+            <span id="theme-toggle-text" class="d-none d-md-inline" data-i18n="nav.themeDark">โหมดมืด</span>
+          </button>
+
+          <!-- Language Switcher -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-secondary-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-translate"></i>
+              <span id="current-lang-label">🇹🇭 TH</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="th">🇹🇭 ภาษาไทย (TH)</a></li>
+              <li><a class="dropdown-item lang-btn" href="#" data-lang-switch="en">🇬🇧 English (EN)</a></li>
+            </ul>
+          </div>
+
+          {{if .User}}
+            <div class="dropdown">
+              <button class="btn btn-sm btn-primary-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-person-circle"></i>
+                <span class="d-none d-md-inline">{{.User.Name}}</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item text-danger" href="/logout" data-i18n="nav.logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+              </ul>
+            </div>
+          {{else}}
+            <a href="/login" class="btn btn-sm btn-secondary-custom" data-i18n="nav.login">เข้าสู่ระบบ</a>
+            <a href="/register" class="btn btn-sm btn-primary-custom" data-i18n="nav.register">สมัครสมาชิก</a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bold mb-1" data-i18n="rooms.title">รายการห้องพัก</h2>
+        <p class="text-secondary mb-0" data-i18n="rooms.subtitle">ค้นหาและตรวจสอบสถานะห้องพักในหอพัก</p>
+      </div>
+      {{if .User}}
+        {{if eq .User.Role "admin"}}
+          <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+            <i class="bi bi-plus-lg me-1"></i> <span data-i18n="rooms.addRoom">เพิ่มห้องพักใหม่</span>
+          </button>
+        {{end}}
+      {{end}}
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="card card-custom p-3 mb-4">
+      <form action="/rooms" method="GET" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" data-i18n="common.search">ค้นหา</label>
+          <div class="input-group">
+            <span class="input-group-text bg-secondary-subtle"><i class="bi bi-search"></i></span>
+            <input type="text" name="search" class="form-control" placeholder="ค้นหาเลขห้อง, ประเภท..." data-i18n-placeholder="rooms.searchPlaceholder" value="{{.SearchQuery}}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" data-i18n="rooms.status">สถานะ</label>
+          <select name="status" class="form-select">
+            <option value="all" data-i18n="rooms.filterAll">ทั้งหมด (All)</option>
+            <option value="vacant" {{if eq .StatusFilter "vacant"}}selected{{end}} data-i18n="status.vacant">ว่าง (Vacant)</option>
+            <option value="occupied" {{if eq .StatusFilter "occupied"}}selected{{end}} data-i18n="status.occupied">มีผู้เช่า (Occupied)</option>
+            <option value="maintenance" {{if eq .StatusFilter "maintenance"}}selected{{end}} data-i18n="status.maintenance">ซ่อมแซม (Maintenance)</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" data-i18n="rooms.floor">ชั้น</label>
+          <select name="floor" class="form-select">
+            <option value="all" data-i18n="rooms.filterAll">ทุกชั้น (All Floors)</option>
+            <option value="1" {{if eq .FloorFilter "1"}}selected{{end}}>ชั้น 1 (Floor 1)</option>
+            <option value="2" {{if eq .FloorFilter "2"}}selected{{end}}>ชั้น 2 (Floor 2)</option>
+            <option value="3" {{if eq .FloorFilter "3"}}selected{{end}}>ชั้น 3 (Floor 3)</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary-custom w-100" data-i18n="common.filter">
+            <i class="bi bi-funnel me-1"></i> กรองข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Rooms Grid -->
+    <div class="row g-4 mb-4">
+      {{if .Rooms}}
+        {{range .Rooms}}
+          <div class="col-md-6 col-lg-4">
+            <div class="card card-custom h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fs-4 fw-bold text-primary">ห้อง {{.RoomNumber}}</span>
+                  <span class="badge-status badge-{{.Status}}" data-i18n="status.{{.Status}}">{{.Status}}</span>
+                </div>
+                
+                <div class="d-flex justify-content-between text-secondary mb-2 small">
+                  <span><i class="bi bi-tag me-1"></i>{{.RoomType}}</span>
+                  <span><i class="bi bi-layers me-1"></i>ชั้น {{.Floor}}</span>
+                </div>
+
+                <div class="my-3">
+                  <div class="fs-4 fw-bold text-success">{{printf "%.2f" .Price}} <small class="fs-6 text-muted">฿/เดือน</small></div>
+                </div>
+
+                <p class="text-secondary small mb-3" style="min-height: 40px;">
+                  {{if .Description}}{{.Description}}{{else}}ห้องพักสภาพดี พร้อมเข้าอยู่{{end}}
+                </p>
+
+                {{if .TenantName}}
+                  <div class="p-2 rounded bg-secondary-subtle small mb-3">
+                    <span class="text-muted" data-i18n="rooms.tenant">ผู้เช่า:</span> <strong>{{.TenantName}}</strong>
+                  </div>
+                {{end}}
+
+                {{if $.User}}
+                  {{if eq $.User.Role "admin"}}
+                    <div class="d-flex gap-2 pt-2 border-top">
+                      <button class="btn btn-sm btn-secondary-custom flex-grow-1" data-bs-toggle="modal" data-bs-target="#editRoomModal"
+                              data-id="{{.ID}}" data-number="{{.RoomNumber}}" data-type="{{.RoomType}}"
+                              data-price="{{.Price}}" data-floor="{{.Floor}}" data-status="{{.Status}}" data-desc="{{.Description}}">
+                        <i class="bi bi-pencil me-1"></i> <span data-i18n="common.edit">แก้ไข</span>
+                      </button>
+
+                      <form action="/rooms/{{.ID}}/delete" method="POST" onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบห้องพักนี้?');">
+                        <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบห้องพัก">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    </div>
+                  {{end}}
+                {{end}}
+
+              </div>
+            </div>
+          </div>
+        {{end}}
+      {{else}}
+        <div class="col-12 text-center py-5">
+          <div class="stat-icon bg-secondary-subtle text-secondary mx-auto mb-3" style="width: 60px; height: 60px;">
+            <i class="bi bi-search fs-3"></i>
+          </div>
+          <h5 class="fw-bold" data-i18n="rooms.noRooms">ไม่พบข้อมูลห้องพักตามเงื่อนไข</h5>
+          <a href="/rooms" class="btn btn-sm btn-outline-primary mt-2">ล้างตัวกรอง</a>
+        </div>
+      {{end}}
+    </div>
+  </main>
+
+  {{if .User}}
+    {{if eq .User.Role "admin"}}
+      <!-- Add Room Modal -->
+      <div class="modal fade" id="addRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form action="/rooms/new" method="POST">
+              <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+              <div class="modal-header">
+                <h5 class="modal-title" data-i18n="rooms.addRoom">เพิ่มห้องพักใหม่</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label" data-i18n="rooms.roomNumber">หมายเลขห้อง</label>
+                  <input type="text" name="room_number" class="form-control" placeholder="เช่น 105" required>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.roomType">ประเภทห้อง</label>
+                    <select name="room_type" class="form-select" required>
+                      <option value="Standard">Standard</option>
+                      <option value="Deluxe">Deluxe</option>
+                      <option value="Studio">Studio</option>
+                      <option value="Suite">Suite</option>
+                    </select>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.floor">ชั้นที่</label>
+                    <input type="number" name="floor" class="form-control" value="1" min="1" max="20" required>
+                  </div>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.price">ราคาต่อเดือน (บาท)</label>
+                    <input type="number" step="0.01" name="price" class="form-control" placeholder="4500.00" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.status">สถานะ</label>
+                    <select name="status" class="form-select">
+                      <option value="vacant" data-i18n="status.vacant">ว่าง (Vacant)</option>
+                      <option value="occupied" data-i18n="status.occupied">มีผู้เช่า (Occupied)</option>
+                      <option value="maintenance" data-i18n="status.maintenance">ซ่อมแซม (Maintenance)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" data-i18n="rooms.description">รายละเอียด / เฟอร์นิเจอร์</label>
+                  <textarea name="description" class="form-control" rows="3" placeholder="ระบุขนาดเตียง ตู้เย็น เครื่องปรับอากาศ..."></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal" data-i18n="common.cancel">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary-custom" data-i18n="common.save">บันทึกข้อมูล</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Room Modal -->
+      <div class="modal fade" id="editRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form id="editRoomForm" method="POST">
+              <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+              <div class="modal-header">
+                <h5 class="modal-title" data-i18n="rooms.editRoom">แก้ไขข้อมูลห้องพัก</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label" data-i18n="rooms.roomNumber">หมายเลขห้อง</label>
+                  <input type="text" id="edit_room_number" name="room_number" class="form-control" required>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.roomType">ประเภทห้อง</label>
+                    <select id="edit_room_type" name="room_type" class="form-select" required>
+                      <option value="Standard">Standard</option>
+                      <option value="Deluxe">Deluxe</option>
+                      <option value="Studio">Studio</option>
+                      <option value="Suite">Suite</option>
+                    </select>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.floor">ชั้นที่</label>
+                    <input type="number" id="edit_floor" name="floor" class="form-control" required>
+                  </div>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.price">ราคาต่อเดือน (บาท)</label>
+                    <input type="number" step="0.01" id="edit_price" name="price" class="form-control" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label" data-i18n="rooms.status">สถานะ</label>
+                    <select id="edit_status" name="status" class="form-select">
+                      <option value="vacant" data-i18n="status.vacant">ว่าง (Vacant)</option>
+                      <option value="occupied" data-i18n="status.occupied">มีผู้เช่า (Occupied)</option>
+                      <option value="maintenance" data-i18n="status.maintenance">ซ่อมแซม (Maintenance)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" data-i18n="rooms.description">รายละเอียด</label>
+                  <textarea id="edit_description" name="description" class="form-control" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal" data-i18n="common.cancel">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary-custom" data-i18n="common.save">บันทึกการแก้ไข</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {{end}}
+  {{end}}
+
+  <footer>
+    <div class="container text-center">
+      <p class="mb-0 small text-secondary">Dormitory Management System &bull; Go + PostgreSQL</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
