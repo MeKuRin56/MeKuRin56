@@ -115,7 +115,11 @@ func main() {
 	announcementHandler := handlers.NewAnnouncementHandler(cfg)
 
 	// ==================== Public & Home Routes ====================
-	r.GET("/", func(c *gin.Context) {
+	// Root route lands directly on the Login page as requested by user
+	r.GET("/", authHandler.ShowLogin)
+
+	// Home overview page
+	r.GET("/home", func(c *gin.Context) {
 		currentUser := middleware.GetCurrentUser(c)
 		var stats models.DashboardStats
 
