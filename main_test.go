@@ -644,3 +644,42 @@ func TestUploadsSecurityAndIDOR(t *testing.T) {
 	}
 }
 
+// 16: Test Emergency Admin Password Reset via Server Environment
+func TestEmergencyAdminPasswordReset(t *testing.T) {
+	_, db, cfg := setupTestApp(t)
+
+	// Ensure an admin user exists
+	var adminEmail string
+	err := db.QueryRow("SELECT email FROM users WHERE role = 'admin' LIMIT 1").Scan(&adminEmail)
+	if err != nil {
+		t.Fatalf("Admin account not found: %v", err)
+	}
+
+	// 1. Short password (< 8 chars) should be ignored
+	shortCfg := *cfg
+	shortCfg.EmergencyAdminPassword = "short"
+	_ = db.ProcessEmergencyReset(&shortCfg)
+
+	var passHash string
+	_ = db.QueryRow("SELECT password FROM users WHERE email = ?", adminEmail).Scan(&passHash)
+	if bcrypt.CompareHashAndPassword([]byte(passHash), []byte("short")) == nil {
+		t.Errorf("Emergency reset erroneously accepted short password (< 8 chars)!")
+	}
+
+	// 2. Valid password (>= 8 chars) should successfully reset the password
+	validCfg := *cfg
+	validCfg.EmergencyAdminPassword = "NewEmergencyPass2026!"
+	validCfg.EmergencyAdminEmail = adminEmail
+	err = db.ProcessEmergencyReset(&validCfg)
+	if err != nil {
+		t.Fatalf("ProcessEmergencyReset failed: %v", err)
+	}
+
+	var newPassHash string
+	_ = db.QueryRow("SELECT password FROM users WHERE email = ?", adminEmail).Scan(&newPassHash)
+
+	if err := bcrypt.CompareHashAndPassword([]byte(newPassHash), []byte("NewEmergencyPass2026!")); err != nil {
+		t.Errorf("Emergency password reset verification failed: %v", err)
+	}
+}
+

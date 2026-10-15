@@ -151,11 +151,12 @@ func (h *AdminHandler) ShowAdminDashboard(c *gin.Context) {
 		"RecentPayments": recentPayments,
 		"Tenants":        tenants,
 		"Rooms":          allRooms,
-		"Announcements":  announcements,
-		"User":           currentUser,
-		"CSRFToken":      middleware.GetCSRFToken(c),
-		"Success":        c.Query("success"),
-		"Error":          c.Query("error"),
+		"Announcements":    announcements,
+		"User":             currentUser,
+		"CSRFToken":        middleware.GetCSRFToken(c),
+		"Success":          c.Query("success"),
+		"Error":            c.Query("error"),
+		"EmergencyWarning": h.cfg.EmergencyAdminPassword != "",
 	})
 }
 

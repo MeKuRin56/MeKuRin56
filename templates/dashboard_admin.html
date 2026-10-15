@@ -106,6 +106,16 @@
       </div>
     {{end}}
 
+    {{if .EmergencyWarning}}
+      <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center mb-4" role="alert">
+        <i class="bi bi-shield-exclamation text-warning me-2 fs-4"></i>
+        <div>
+          <strong>แจ้งเตือนความปลอดภัย:</strong> ระบบตรวจพบว่ามีการตั้งค่า <code>EMERGENCY_ADMIN_PASSWORD</code> ค้างไว้ใน Environment Variables ของเซิร์ฟเวอร์ กรุณาเข้าไปลบตัวแปรนี้ออกจาก Render เพื่อความปลอดภัยสูงสุด
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+
     {{if .Announcements}}
     <div class="mb-4">
       <div class="d-flex justify-content-between align-items-center mb-2">

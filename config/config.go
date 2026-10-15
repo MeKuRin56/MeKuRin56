@@ -22,11 +22,13 @@ type Config struct {
 	DBName        string
 	DBSSLMode     string
 	SessionSecret string
-	AdminEmail    string
-	AdminPassword string
-	AdminName     string
-	UploadDir     string
-	Environment   string // "development" or "production"
+	AdminEmail             string
+	AdminPassword          string
+	AdminName              string
+	UploadDir              string
+	Environment            string // "development" or "production"
+	EmergencyAdminPassword string // Server-level emergency password reset via environment variable
+	EmergencyAdminEmail    string // Optional target email for emergency reset
 }
 
 func LoadConfig() *Config {
@@ -60,9 +62,11 @@ func LoadConfig() *Config {
 		// In development, override via .env: ADMIN_EMAIL=admin@dormitory.com ADMIN_PASSWORD=admin123456
 		AdminEmail:    os.Getenv("ADMIN_EMAIL"),
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
-		AdminName:     getEnv("ADMIN_NAME", "Dormitory Administrator"),
-		UploadDir:     getEnv("UPLOAD_DIR", "./uploads"),
-		Environment:   getEnv("ENV", "development"),
+		AdminName:              getEnv("ADMIN_NAME", "Dormitory Administrator"),
+		UploadDir:              getEnv("UPLOAD_DIR", "./uploads"),
+		Environment:            getEnv("ENV", "development"),
+		EmergencyAdminPassword: os.Getenv("EMERGENCY_ADMIN_PASSWORD"),
+		EmergencyAdminEmail:    os.Getenv("EMERGENCY_ADMIN_EMAIL"),
 	}
 }
 

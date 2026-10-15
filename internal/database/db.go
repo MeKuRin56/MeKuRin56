@@ -88,6 +88,11 @@ func InitDB(cfg *config.Config) (*DB, error) {
 			err = fmt.Errorf("seeding failed: %w", seedErr)
 			return
 		}
+
+		// Process emergency admin password reset if requested via server environment
+		if resetErr := instance.ProcessEmergencyReset(cfg); resetErr != nil {
+			log.Printf("[DATABASE WARNING] Emergency reset error: %v", resetErr)
+		}
 	})
 
 	if err != nil {
